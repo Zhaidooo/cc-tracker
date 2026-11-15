@@ -1,0 +1,2536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Family &amp; Card Installment Tracker</title>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Font: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    /* Subtle custom scrollbar for the horizontal amortization schedule */
+    .schedule-scroll::-webkit-scrollbar {
+      height: 10px;
+    }
+    .schedule-scroll::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 9999px;
+    }
+    .schedule-scroll::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+      border: 2px solid #f1f5f9;
+    }
+    .schedule-scroll::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans antialiased min-h-screen flex flex-col overflow-x-hidden">
+
+  <!-- ===================================================================== -->
+  <!-- TOP NAVIGATION HEADER                                                 -->
+  <!-- ===================================================================== -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <!-- Brand / Title -->
+        <div class="flex items-start sm:items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white flex items-center justify-center shadow-sm shrink-0 mt-0.5 sm:mt-0">
+            <!-- Credit Card SVG Icon -->
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="2" y="5" width="20" height="14" rx="3" />
+              <line x1="2" y1="10" x2="22" y2="10" />
+              <line x1="6" y1="15" x2="10" y2="15" />
+            </svg>
+          </div>
+          <div>
+            <div class="flex flex-wrap items-center gap-2">
+              <h1 class="text-lg sm:text-xl font-bold tracking-tight text-slate-900">
+                Family &amp; Card Installment Tracker
+              </h1>
+              <span id="connectionModeBadge" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                <span id="connectionModeText">Demo Mode</span>
+              </span>
+            </div>
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-0.5 text-xs text-slate-500">
+              <span class="font-medium text-slate-600">Multi-Card &amp; BNPL Monthly Amortization Schedule</span>
+              <span class="hidden sm:inline text-slate-300">&bull;</span>
+              <span id="lastUpdatedBadge" class="inline-flex items-center gap-1 text-slate-500">
+                <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="9" />
+                  <polyline points="12 7 12 12 15 14" />
+                </svg>
+                <span>Last Updated: <strong id="lastUpdatedText" class="font-medium text-slate-700">Initializing...</strong></span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Header Controls: Auth / Admin Status -->
+        <div class="flex items-center justify-between sm:justify-end gap-2.5 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+          <!-- Logged-Out Subtle Admin Login Button -->
+          <button
+            id="adminLoginBtn"
+            type="button"
+            class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200/80 hover:text-slate-900 border border-slate-200/80 transition focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+          >
+            <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+            <span>Admin Login</span>
+          </button>
+
+          <!-- Logged-In Admin User Pill + Sign Out -->
+          <div id="adminUserContainer" class="hidden items-center gap-2.5">
+            <div class="flex items-center gap-2 bg-slate-100 border border-slate-200 rounded-xl px-3 py-1.5">
+              <img
+                id="adminAvatar"
+                src="https://placehold.co/32x32/f59e0b/ffffff?text=A"
+                alt="Admin Avatar"
+                onerror="this.onerror=null;this.src='https://placehold.co/32x32/f59e0b/ffffff?text=A';"
+                class="w-6 h-6 rounded-full object-cover border border-white shadow-xs"
+              />
+              <div class="leading-tight">
+                <p id="adminName" class="text-xs font-semibold text-slate-800 max-w-[140px] truncate">Admin</p>
+                <p id="adminRoleLabel" class="text-[10px] font-medium text-emerald-700">Admin Mode Active</p>
+              </div>
+            </div>
+            <button
+              id="adminLogoutBtn"
+              type="button"
+              class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-rose-700 bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-200 transition"
+            >
+              <span>Sign Out</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- ADMIN TOOLBAR (Visible only when signed in as Admin)                -->
+    <!-- =================================================================== -->
+    <div id="adminToolbar" class="hidden bg-slate-900 text-white border-t border-slate-800">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+        <div class="flex items-center gap-2 text-xs text-slate-300">
+          <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-400/30">
+            ADMIN CONTROLS
+          </span>
+          <span>Click any active monthly cell below to toggle <strong>Pending</strong> / <strong>Paid</strong> status.</span>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            id="openAddModalBtn"
+            type="button"
+            class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-sm transition cursor-pointer"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            <span>Add Installment</span>
+          </button>
+          <button
+            id="seedDataBtn"
+            type="button"
+            class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 transition cursor-pointer"
+          >
+            <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+            <span>Load Sample Data</span>
+          </button>
+          <button
+            id="clearAllDataBtn"
+            type="button"
+            class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-rose-950/80 hover:bg-rose-900 text-rose-200 border border-rose-800/80 transition cursor-pointer"
+          >
+            <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            </svg>
+            <span>Clear All Data</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===================================================================== -->
+  <!-- MAIN DASHBOARD CONTENT                                                -->
+  <!-- ===================================================================== -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- Admin Email Configuration Reminder Banner -->
+    <div id="adminConfigReminderBanner" class="hidden rounded-2xl bg-sky-50 border border-sky-200 p-3.5 sm:p-4 flex items-start gap-3">
+      <div class="w-8 h-8 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center shrink-0 mt-0.5">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        </svg>
+      </div>
+      <div class="text-xs sm:text-sm text-sky-950">
+        <p class="font-semibold">Reminder: Set Your Admin Email in <code class="px-1.5 py-0.5 rounded bg-sky-200/60 font-mono text-xs">ADMIN_EMAILS</code></p>
+        <p class="text-sky-800 mt-0.5">
+          <code class="px-1 py-0.5 rounded bg-sky-200/60 font-mono text-xs">ADMIN_EMAILS</code> still contains <code class="px-1 py-0.5 rounded bg-sky-200/60 font-mono text-xs">"your-email@gmail.com"</code>. Admin UI controls are unlocked for testing, while your Firestore Security Rules enforce write permissions on the server.
+        </p>
+      </div>
+    </div>
+
+    <!-- Demo Mode Banner (Shown only when firebaseConfig has placeholder keys) -->
+    <div id="demoBanner" class="hidden rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/90 p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div class="flex items-start gap-3">
+        <div class="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 mt-0.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="16" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12.01" y2="8" />
+          </svg>
+        </div>
+        <div class="text-xs sm:text-sm text-amber-950">
+          <p class="font-semibold">Running in Interactive Local Demo Mode</p>
+          <p class="text-amber-800/90 mt-0.5">
+            Changes are saved locally in your browser. Paste your Firebase v10 keys into <code class="px-1.5 py-0.5 rounded bg-amber-200/60 font-mono text-xs">firebaseConfig</code> at the top of the script to sync live via Firestore.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- PERSON FILTER PILLS, PLATFORM FILTER & SHARE LINK BAR               -->
+    <!-- =================================================================== -->
+    <section aria-label="Filter installments by family member and card platform" class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+      <div id="personFilterContainer" class="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0">
+        <!-- Filter pills are dynamically rendered by JS -->
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2 self-start lg:self-auto">
+        <!-- Card / Platform Filter Dropdown -->
+        <div class="relative">
+          <label for="platformFilterDropdown" class="sr-only">Filter by card or platform</label>
+          <select
+            id="platformFilterDropdown"
+            class="appearance-none bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-xl pl-3.5 pr-8 py-2 border border-slate-200 shadow-2xs focus:outline-none focus:ring-2 focus:ring-amber-500/40 cursor-pointer transition"
+          >
+            <option value="All">All Cards / Platforms</option>
+          </select>
+          <svg class="w-3.5 h-3.5 text-slate-500 pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </div>
+
+        <button
+          id="copyShareLinkBtn"
+          type="button"
+          class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 shadow-2xs transition cursor-pointer"
+          title="Copy shareable link with current person filter"
+        >
+          <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+          </svg>
+          <span id="copyShareLinkText">Copy Filter Link</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- TOP SUMMARY CARDS                                                   -->
+    <!-- =================================================================== -->
+    <section aria-label="Installment financial summary" class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
+      <!-- Card 1: Total Due for Selected Month -->
+      <div class="bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-6 shadow-xs flex flex-col justify-between">
+        <div>
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Total Due for Selected Month
+            </span>
+            <div class="relative">
+              <label for="selectedMonthDropdown" class="sr-only">Select billing month</label>
+              <select
+                id="selectedMonthDropdown"
+                class="appearance-none bg-slate-100 hover:bg-slate-200/70 text-slate-800 text-xs font-semibold rounded-xl pl-3 pr-8 py-1.5 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500/40 cursor-pointer transition"
+              >
+                <!-- Options populated dynamically -->
+              </select>
+              <svg class="w-3.5 h-3.5 text-slate-500 pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </div>
+          </div>
+
+          <div class="mt-3 flex items-baseline gap-2">
+            <p id="selectedMonthTotal" class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 tabular-nums">
+              ₱0.00
+            </p>
+            <span id="selectedMonthFilterTag" class="text-xs font-medium text-slate-500 truncate">
+              (All)
+            </span>
+          </div>
+        </div>
+
+        <!-- Pending vs Paid breakdown for selected month -->
+        <div class="mt-4 pt-3.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="inline-flex items-center gap-1.5 font-medium text-amber-800 bg-amber-50 border border-amber-200/80 px-2 py-1 rounded-lg tabular-nums">
+              <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+              Pending: <strong id="selectedMonthPending">₱0.00</strong>
+            </span>
+            <span class="inline-flex items-center gap-1.5 font-medium text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-2 py-1 rounded-lg tabular-nums">
+              <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+              Paid: <strong id="selectedMonthPaid">₱0.00</strong>
+            </span>
+          </div>
+          <span id="selectedMonthItemCount" class="text-slate-500 font-medium">
+            0 due
+          </span>
+        </div>
+      </div>
+
+      <!-- Card 2: Total Remaining Balance -->
+      <div class="bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-6 shadow-xs flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Total Remaining Balance
+            </span>
+            <span class="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200/80 px-2.5 py-1 rounded-xl">
+              Unpaid Months
+            </span>
+          </div>
+
+          <div class="mt-3 flex items-baseline gap-2">
+            <p id="totalRemainingBalance" class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 tabular-nums">
+              ₱0.00
+            </p>
+            <span id="remainingFilterTag" class="text-xs font-medium text-slate-500 truncate">
+              (All)
+            </span>
+          </div>
+        </div>
+
+        <!-- Overall Amortization Progress Bar & Paid-to-Date Stats -->
+        <div class="mt-4 pt-3.5 border-t border-slate-100 space-y-2">
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-slate-600">
+              Paid: <strong id="totalPaidToDate" class="text-emerald-700 font-semibold tabular-nums">₱0.00</strong>
+            </span>
+            <span class="text-slate-500 tabular-nums">
+              Total Plan: <strong id="totalContractAmount" class="text-slate-700 font-semibold">₱0.00</strong>
+            </span>
+          </div>
+          <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div
+              id="overallProgressBar"
+              class="h-full bg-emerald-500 rounded-full transition-all duration-300"
+              style="width: 0%"
+            ></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 3: Active Installments Overview -->
+      <div class="bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-6 shadow-xs flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Active Installments
+            </span>
+            <span id="activePlatformsCountBadge" class="inline-flex items-center gap-1 text-xs font-semibold text-slate-700 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-xl">
+              0 Platforms
+            </span>
+          </div>
+
+          <div class="mt-3 flex items-baseline gap-2.5">
+            <p id="activeInstallmentsCount" class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 tabular-nums">
+              0
+            </p>
+            <span id="activeInstallmentsSubtext" class="text-xs font-medium text-slate-500">
+              ongoing plans
+            </span>
+          </div>
+        </div>
+
+        <div class="mt-4 pt-3.5 border-t border-slate-100 flex items-center justify-between gap-2 text-xs">
+          <span class="text-slate-600">
+            Total Principal: <strong id="totalPrincipalAmount" class="text-slate-800 font-semibold tabular-nums">₱0.00</strong>
+          </span>
+          <span id="completedPlansBadge" class="text-emerald-700 font-semibold tabular-nums">
+            0 completed
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- ROLLING HORIZONTAL AMORTIZATION TABLE                               -->
+    <!-- =================================================================== -->
+    <section aria-label="Monthly amortization schedule table" class="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+      <!-- Table Top Bar & Legend -->
+      <div class="px-4 sm:px-6 py-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h2 class="text-base font-bold text-slate-900">Rolling Monthly Amortization Schedule</h2>
+          <p class="text-xs text-slate-500 mt-0.5">
+            Click any month column header to inspect its monthly total above. Scroll horizontally to view future billing cycles.
+          </p>
+        </div>
+
+        <!-- Status Color Legend -->
+        <div class="flex flex-wrap items-center gap-3 text-xs font-medium">
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-300 text-amber-800">
+            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+            Pending
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-300 text-emerald-800">
+            <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+            Paid
+          </span>
+        </div>
+      </div>
+
+      <!-- Loading Skeleton State -->
+      <div id="tableLoadingState" class="p-10 text-center space-y-3">
+        <div class="w-8 h-8 border-3 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+        <p class="text-sm font-medium text-slate-600">Loading installment schedule...</p>
+      </div>
+
+      <!-- Horizontal Scroll Wrapper -->
+      <div id="tableScrollWrapper" class="hidden overflow-x-auto schedule-scroll relative">
+        <table class="w-full border-collapse text-left">
+          <thead id="scheduleTableHead" class="bg-slate-50/95 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+            <!-- Dynamically populated -->
+          </thead>
+          <tbody id="scheduleTableBody" class="divide-y divide-slate-200/80 text-sm">
+            <!-- Dynamically populated -->
+          </tbody>
+          <tfoot id="scheduleTableFoot" class="bg-slate-50 border-t-2 border-slate-200 text-xs font-bold text-slate-800">
+            <!-- Dynamically populated -->
+          </tfoot>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- ===================================================================== -->
+  <!-- FOOTER                                                                -->
+  <!-- ===================================================================== -->
+  <footer class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 border-t border-slate-200/80 text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2">
+    <span>Family &amp; Card Installment Tracker &bull; Currency in PHP (₱)</span>
+    <span id="footerStatusNote" class="font-medium text-slate-600">Public Viewer Mode &bull; Read-Only Access</span>
+  </footer>
+
+  <!-- ===================================================================== -->
+  <!-- ADD / EDIT INSTALLMENT MODAL (Admin Only + Interest Calculator)       -->
+  <!-- ===================================================================== -->
+  <div
+    id="installmentModal"
+    class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="installmentModalTitle"
+  >
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-xl w-full max-w-2xl overflow-hidden transform transition-all my-auto">
+      <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
+        <div>
+          <h3 id="installmentModalTitle" class="text-base font-bold text-slate-900">
+            Add New Installment
+          </h3>
+          <p class="text-[11px] text-slate-500 mt-0.5">
+            Enter checkout principal, installment terms, and monthly interest rate to auto-calculate amortization.
+          </p>
+        </div>
+        <button
+          id="closeInstallmentModalBtn"
+          type="button"
+          class="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 transition cursor-pointer"
+          aria-label="Close modal"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+
+      <form id="installmentForm" class="p-6 space-y-4 max-h-[85vh] overflow-y-auto">
+        <input type="hidden" id="editItemId" value="" />
+
+        <!-- Row 1: Family Member + Card / Platform -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label for="inputPerson" class="block text-xs font-semibold text-slate-700 mb-1.5">
+              Family Member <span class="text-rose-500">*</span>
+            </label>
+            <select
+              id="inputPerson"
+              required
+              class="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500"
+            >
+              <option value="Paul">Paul</option>
+              <option value="Anj">Anj</option>
+              <option value="Nanay">Nanay</option>
+              <option value="Mama">Mama</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="inputCardPreset" class="block text-xs font-semibold text-slate-700 mb-1.5">
+              Card / Platform <span class="text-rose-500">*</span>
+            </label>
+            <select
+              id="inputCardPreset"
+              class="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500"
+            >
+              <option value="UnionBank">UnionBank</option>
+              <option value="SPayLater">SPayLater</option>
+              <option value="BDO">BDO</option>
+              <option value="BPI">BPI</option>
+              <option value="Metrobank">Metrobank</option>
+              <option value="RCBC">RCBC</option>
+              <option value="Security Bank">Security Bank</option>
+              <option value="EastWest">EastWest</option>
+              <option value="GCash GGives">GCash GGives</option>
+              <option value="LazPayLater">LazPayLater</option>
+              <option value="Other / Custom">Other / Custom...</option>
+            </select>
+            <input
+              id="inputCardCustom"
+              type="text"
+              placeholder="Enter custom card or lender name"
+              class="hidden mt-2 w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500"
+            />
+          </div>
+        </div>
+
+        <!-- Row 2: Item / Merchant Name + Start Month -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="sm:col-span-2">
+            <label for="inputItemName" class="block text-xs font-semibold text-slate-700 mb-1.5">
+              Item / Merchant Description <span class="text-rose-500">*</span>
+            </label>
+            <input
+              id="inputItemName"
+              type="text"
+              required
+              placeholder="e.g. POCO F6 Pro - Shopee Official Store"
+              class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500"
+            />
+          </div>
+
+          <div>
+            <label for="inputStartMonth" class="block text-xs font-semibold text-slate-700 mb-1.5">
+              Start Month <span class="text-rose-500">*</span>
+            </label>
+            <input
+              id="inputStartMonth"
+              type="month"
+              value="2026-11"
+              required
+              class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500"
+            />
+          </div>
+        </div>
+
+        <!-- Row 3: Installment Calculator Inputs (Principal, Plan Months, Interest Rate, Processing Fee) -->
+        <div class="rounded-2xl bg-slate-50 border border-slate-200/90 p-4 space-y-4">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-700">
+              Installment &amp; Interest Calculator
+            </span>
+            <span id="modalPreviewSpan" class="text-[11px] font-semibold text-amber-800 bg-amber-100/80 border border-amber-200 px-2.5 py-0.5 rounded-lg">
+              Nov 2026 &rarr; Apr 2027 (6 mos)
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- Checkout Amount (Principal) -->
+            <div>
+              <label for="inputPrincipal" class="block text-xs font-semibold text-slate-700 mb-1.5">
+                Checkout Amount (Principal) <span class="text-rose-500">*</span>
+              </label>
+              <div class="relative flex items-center">
+                <span class="absolute left-3.5 text-xs font-bold text-slate-400 select-none">PHP</span>
+                <input
+                  id="inputPrincipal"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  required
+                  placeholder="26150"
+                  class="w-full rounded-xl border border-slate-300 bg-white pl-12 pr-3.5 py-2.5 text-sm font-semibold text-slate-900 tabular-nums focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500"
+                />
+              </div>
+            </div>
+
+            <!-- Installment Plan (Months) -->
+            <div>
+              <label for="inputPlanSelect" class="block text-xs font-semibold text-slate-700 mb-1.5">
+                Installment Plan <span class="text-rose-500">*</span>
+              </label>
+              <div class="flex items-center gap-2">
+                <select
+                  id="inputPlanSelect"
+                  class="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500"
+                >
+                  <option value="3">3 months</option>
+                  <option value="6" selected>6 months</option>
+                  <option value="9">9 months</option>
+                  <option value="12">12 months</option>
+                  <option value="18">18 months</option>
+                  <option value="24">24 months</option>
+                  <option value="36">36 months</option>
+                  <option value="custom">Custom...</option>
+                </select>
+                <input
+                  id="inputCustomMonths"
+                  type="number"
+                  min="1"
+                  max="120"
+                  value="6"
+                  placeholder="Mos"
+                  class="hidden w-24 shrink-0 rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-semibold text-slate-800 tabular-nums focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500"
+                />
+              </div>
+            </div>
+
+            <!-- Monthly Interest Rate (% / month) -->
+            <div>
+              <label for="inputInterestRate" class="block text-xs font-semibold text-slate-700 mb-1.5">
+                Monthly Interest Rate
+              </label>
+              <div class="relative flex items-center">
+                <input
+                  id="inputInterestRate"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value="0"
+                  placeholder="3.95"
+                  class="w-full rounded-xl border border-slate-300 bg-white pl-3.5 pr-20 py-2.5 text-sm font-semibold text-slate-900 tabular-nums focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500"
+                />
+                <span class="absolute right-3 text-xs font-semibold text-slate-400 select-none">% / month</span>
+              </div>
+              <p class="text-[11px] text-slate-500 mt-1 leading-snug">
+                0% for 0% promo, ~1.00% for bank add-on, up to 3.95% for SPayLater.
+              </p>
+            </div>
+
+            <!-- Processing Fee (%) -->
+            <div>
+              <label for="inputProcessingFee" class="block text-xs font-semibold text-slate-700 mb-1.5">
+                Processing Fee
+              </label>
+              <div class="relative flex items-center">
+                <input
+                  id="inputProcessingFee"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value="0"
+                  placeholder="0"
+                  class="w-full rounded-xl border border-slate-300 bg-white pl-3.5 pr-10 py-2.5 text-sm font-semibold text-slate-900 tabular-nums focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500"
+                />
+                <span class="absolute right-3.5 text-xs font-semibold text-slate-400 select-none">%</span>
+              </div>
+              <p class="text-[11px] text-slate-500 mt-1 leading-snug">
+                0%&ndash;7% of checkout amount (leave 0 if none).
+              </p>
+            </div>
+          </div>
+
+          <!-- Real-Time Breakdown & Editable Final Monthly Amortization -->
+          <div class="rounded-xl bg-white border border-slate-200 p-3.5 space-y-3">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2.5 border-b border-slate-100">
+              <div>
+                <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-500 block">
+                  Auto-Calculated Monthly Installment
+                </span>
+                <strong id="calcAutoMonthlyDisplay" class="text-xl font-extrabold text-amber-700 tabular-nums">
+                  ₱0.00
+                </strong>
+              </div>
+
+              <div class="sm:text-right">
+                <div class="flex items-center sm:justify-end gap-2 mb-1">
+                  <label for="inputMonthlyAmount" class="text-[11px] font-semibold text-slate-700">
+                    Final Monthly Amortization (₱) <span class="text-rose-500">*</span>
+                  </label>
+                  <button
+                    id="resetAutoMonthlyBtn"
+                    type="button"
+                    class="hidden text-[10px] font-semibold text-amber-700 hover:text-amber-900 underline cursor-pointer"
+                  >
+                    Reset to Auto
+                  </button>
+                </div>
+                <input
+                  id="inputMonthlyAmount"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  required
+                  placeholder="0.00"
+                  class="w-full sm:w-44 rounded-lg border border-amber-300 bg-amber-50/40 px-3 py-1.5 text-sm font-bold text-slate-900 sm:text-right tabular-nums focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500"
+                />
+              </div>
+            </div>
+
+            <!-- 5-Metric Amortization Breakdown -->
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[11px]">
+              <div class="bg-slate-50 rounded-lg px-2.5 py-1.5">
+                <span class="text-slate-500 block">Monthly Principal</span>
+                <strong id="calcMonthlyPrincipal" class="text-slate-800 font-semibold tabular-nums">₱0.00</strong>
+              </div>
+              <div class="bg-slate-50 rounded-lg px-2.5 py-1.5">
+                <span class="text-slate-500 block">Monthly Interest</span>
+                <strong id="calcMonthlyInterest" class="text-slate-800 font-semibold tabular-nums">₱0.00</strong>
+              </div>
+              <div class="bg-slate-50 rounded-lg px-2.5 py-1.5">
+                <span class="text-slate-500 block">Monthly Fee Share</span>
+                <strong id="calcMonthlyFee" class="text-slate-800 font-semibold tabular-nums">₱0.00</strong>
+              </div>
+              <div class="bg-slate-50 rounded-lg px-2.5 py-1.5">
+                <span class="text-slate-500 block">Total Interest &amp; Fees</span>
+                <strong id="calcTotalInterestFees" class="text-rose-700 font-semibold tabular-nums">₱0.00</strong>
+              </div>
+              <div class="bg-slate-50 rounded-lg px-2.5 py-1.5 col-span-2 sm:col-span-1">
+                <span class="text-slate-500 block">Total Payable</span>
+                <strong id="calcTotalPayable" class="text-slate-900 font-bold tabular-nums">₱0.00</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Optional Notes -->
+        <div>
+          <label for="inputNotes" class="block text-xs font-semibold text-slate-700 mb-1.5">
+            Notes (Optional)
+          </label>
+          <input
+            id="inputNotes"
+            type="text"
+            placeholder="e.g. Statement due every 15th, 0% promo"
+            class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500"
+          />
+        </div>
+
+        <div class="pt-2 flex items-center justify-end gap-2.5 border-t border-slate-100">
+          <button
+            id="cancelInstallmentModalBtn"
+            type="button"
+            class="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/80 transition cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            id="saveInstallmentBtn"
+            type="submit"
+            class="px-5 py-2.5 rounded-xl text-xs font-semibold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-sm transition cursor-pointer"
+          >
+            Save Installment
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- CUSTOM CONFIRMATION MODAL (Replaces browser confirm())                -->
+  <!-- ===================================================================== -->
+  <div
+    id="confirmModal"
+    class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="confirmModalTitle"
+  >
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-xl w-full max-w-md overflow-hidden p-6 space-y-4">
+      <div class="flex items-start gap-3.5">
+        <div id="confirmModalIconBox" class="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <div>
+          <h3 id="confirmModalTitle" class="text-base font-bold text-slate-900">Confirm Action</h3>
+          <p id="confirmModalMessage" class="text-xs sm:text-sm text-slate-600 mt-1 leading-relaxed">
+            Are you sure you want to proceed?
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2.5 pt-2">
+        <button
+          id="confirmModalCancelBtn"
+          type="button"
+          class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/80 transition"
+        >
+          Cancel
+        </button>
+        <button
+          id="confirmModalProceedBtn"
+          type="button"
+          class="px-4 py-2 rounded-xl text-xs font-semibold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-sm transition"
+        >
+          Confirm
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- TOAST NOTIFICATION CONTAINER (Replaces browser alert())               -->
+  <!-- ===================================================================== -->
+  <div
+    id="toastContainer"
+    class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"
+    aria-live="polite"
+  ></div>
+
+  <!-- ===================================================================== -->
+  <!-- APPLICATION LOGIC (Firebase v10 Modular SDK + Local Demo Fallback)    -->
+  <!-- ===================================================================== -->
+  <script type="module">
+    // =========================================================================
+    // 1. CONFIGURATION & SAMPLE MULTI-PLATFORM DATA
+    // =========================================================================
+
+    /**
+     * FIREBASE WEB APP CREDENTIALS (Project: cc-tracking-5b18b)
+     */
+    const firebaseConfig = {
+      apiKey: "AIzaSyA0-exxcAcI9fWefCpPi-RKKLMiPJtveCc",
+      authDomain: "cc-tracking-5b18b.firebaseapp.com",
+      projectId: "cc-tracking-5b18b",
+      storageBucket: "cc-tracking-5b18b.firebasestorage.app",
+      messagingSenderId: "907192414668",
+      appId: "1:907192414668:web:ae6229762cf3408c3d2d69",
+      measurementId: "G-JWXW6SPZMT"
+    };
+
+    /**
+     * ADMIN EMAIL ALLOWLIST:
+     * Replace "your-email@gmail.com" with your Google account email.
+     * While "your-email@gmail.com" remains here, any signed-in Google user can
+     * access the Admin UI controls while Firestore Security Rules enforce writes.
+     */
+    const ADMIN_EMAILS = ["paulbelamide@gmail.com"];
+
+    const CARD_PLATFORM_PRESETS = [
+      "UnionBank",
+      "SPayLater",
+      "BDO",
+      "BPI",
+      "Metrobank",
+      "RCBC",
+      "Security Bank",
+      "EastWest",
+      "GCash GGives",
+      "LazPayLater"
+    ];
+
+    /**
+     * SAMPLE MULTI-PLATFORM ITEMS (Only uploaded when Admin clicks 'Load Sample Data')
+     */
+    const SAMPLE_MULTI_PLATFORM_ITEMS = [
+      {
+        person: "Paul",
+        itemName: "POCO F6 Pro 512GB - Shopee Official Store",
+        cardPlatform: "SPayLater",
+        principal: 26150.00,
+        interestRate: 3.95,
+        processingFeePercent: 0,
+        totalMonths: 6,
+        monthlyAmount: 5391.26,
+        startMonth: "2026-11",
+        notes: "3.95%/mo SPayLater 6 mos",
+        paidMonths: []
+      },
+      {
+        person: "Anj",
+        itemName: "Dyson Airwrap Multi-Styler - Rustan's",
+        cardPlatform: "UnionBank",
+        principal: 34900.00,
+        interestRate: 0,
+        processingFeePercent: 0,
+        totalMonths: 12,
+        monthlyAmount: 2908.33,
+        startMonth: "2026-11",
+        notes: "0% PayEasy 12 mos",
+        paidMonths: []
+      },
+      {
+        person: "Nanay",
+        itemName: "Panasonic Inverter Refrigerator - Abenson",
+        cardPlatform: "BDO",
+        principal: 29400.00,
+        interestRate: 0,
+        processingFeePercent: 0,
+        totalMonths: 12,
+        monthlyAmount: 2450.00,
+        startMonth: "2026-11",
+        notes: "BDO 0% Installment 12 mos",
+        paidMonths: []
+      },
+      {
+        person: "Mama",
+        itemName: "LG 55\" 4K Smart TV - SM Appliance Center",
+        cardPlatform: "GCash GGives",
+        principal: 28000.00,
+        interestRate: 1.59,
+        processingFeePercent: 0,
+        totalMonths: 12,
+        monthlyAmount: 2778.53,
+        startMonth: "2026-11",
+        notes: "GGives 12 mos plan",
+        paidMonths: []
+      }
+    ];
+
+    // =========================================================================
+    // 2. FIREBASE v10 MODULAR SDK IMPORTS (CDN)
+    // =========================================================================
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+    import {
+      getAuth,
+      GoogleAuthProvider,
+      signInWithPopup,
+      signOut,
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+    import {
+      getFirestore,
+      collection,
+      onSnapshot,
+      addDoc,
+      updateDoc,
+      deleteDoc,
+      doc,
+      writeBatch,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+    // =========================================================================
+    // 3. CONSTANTS, FORMATTERS & PURE MONTH UTILITIES
+    // =========================================================================
+    const FAMILY_MEMBERS = ["All", "Nanay", "Mama", "Anj", "Paul"];
+    const BASE_START_MONTH = "2026-11"; // Rolling columns begin November 2026
+    const MIN_ROLLING_MONTHS = 12;
+    const DEMO_STORAGE_KEY = "family_card_installments_demo_v2";
+
+    const PERSON_BADGE_STYLES = {
+      Paul: "bg-sky-100 text-sky-800 border-sky-200",
+      Anj: "bg-violet-100 text-violet-800 border-violet-200",
+      Nanay: "bg-rose-100 text-rose-800 border-rose-200",
+      Mama: "bg-teal-100 text-teal-800 border-teal-200"
+    };
+
+    const PLATFORM_BADGE_STYLES = {
+      unionbank: "bg-orange-100 text-orange-800 border-orange-200",
+      spaylater: "bg-red-100 text-red-800 border-red-200",
+      bdo: "bg-blue-100 text-blue-800 border-blue-200",
+      bpi: "bg-rose-100 text-rose-900 border-rose-200",
+      metrobank: "bg-indigo-100 text-indigo-800 border-indigo-200",
+      rcbc: "bg-cyan-100 text-cyan-800 border-cyan-200",
+      "security bank": "bg-emerald-100 text-emerald-800 border-emerald-200",
+      eastwest: "bg-purple-100 text-purple-800 border-purple-200",
+      "gcash ggives": "bg-sky-100 text-sky-900 border-sky-200",
+      lazpaylater: "bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200"
+    };
+
+    function getPlatformBadgeClass(platform) {
+      const key = String(platform || "").trim().toLowerCase();
+      return PLATFORM_BADGE_STYLES[key] || "bg-slate-100 text-slate-700 border-slate-200";
+    }
+
+    const phpFormatter = new Intl.NumberFormat("en-PH", {
+      style: "currency",
+      currency: "PHP",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+
+    function formatPHP(amount) {
+      return phpFormatter.format(Number(amount) || 0);
+    }
+
+    /**
+     * Converts "YYYY-MM" to an integer month index (year * 12 + (month - 1)).
+     * Eliminates timezone/DST off-by-one errors completely.
+     */
+    function ymToIndex(ym) {
+      const [y, m] = ym.split("-").map(Number);
+      return y * 12 + (m - 1);
+    }
+
+    function indexToYm(idx) {
+      const y = Math.floor(idx / 12);
+      const m = (idx % 12) + 1;
+      return `${y}-${String(m).padStart(2, "0")}`;
+    }
+
+    function addMonths(ym, offset) {
+      return indexToYm(ymToIndex(ym) + offset);
+    }
+
+    function formatMonthShort(ym) {
+      const [y, m] = ym.split("-").map(Number);
+      const date = new Date(y, m - 1, 1);
+      return date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+    }
+
+    function formatMonthLong(ym) {
+      const [y, m] = ym.split("-").map(Number);
+      const date = new Date(y, m - 1, 1);
+      return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    }
+
+    function formatTimestampDisplay(dateObj) {
+      if (!dateObj) return "Just now";
+      return dateObj.toLocaleString("en-PH", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit"
+      });
+    }
+
+    /**
+     * Generates a per-month status map: { "2026-11": "pending", "2026-12": "pending", ... }
+     * Preserves any existing "paid" statuses for overlapping months when editing.
+     */
+    function buildScheduleMap(startMonth, terms, existingSchedule = {}) {
+      const schedule = {};
+      const totalTerms = Math.max(1, parseInt(terms, 10) || 1);
+      for (let i = 0; i < totalTerms; i++) {
+        const ym = addMonths(startMonth, i);
+        schedule[ym] = existingSchedule[ym] === "paid" ? "paid" : "pending";
+      }
+      return schedule;
+    }
+
+    // =========================================================================
+    // 4. APPLICATION STATE
+    // =========================================================================
+    const isDemoMode =
+      !firebaseConfig.apiKey ||
+      firebaseConfig.apiKey === "YOUR_API_KEY" ||
+      !firebaseConfig.projectId ||
+      firebaseConfig.projectId === "YOUR_PROJECT_ID";
+
+    const state = {
+      installments: [],
+      selectedPerson: "All",
+      selectedPlatform: "All",
+      selectedMonth: BASE_START_MONTH,
+      rollingMonths: [],
+      isAdmin: false,
+      currentUser: null,
+      lastUpdated: new Date()
+    };
+
+    let firebaseApp = null;
+    let auth = null;
+    let db = null;
+    let confirmCallback = null;
+    let lastAutoCalculatedMonthly = 0;
+    let isMonthlyManuallyOverridden = false;
+
+    // =========================================================================
+    // 5. DOM ELEMENT REFERENCES
+    // =========================================================================
+    const els = {
+      connectionModeBadge: document.getElementById("connectionModeBadge"),
+      connectionModeText: document.getElementById("connectionModeText"),
+      lastUpdatedText: document.getElementById("lastUpdatedText"),
+      adminConfigReminderBanner: document.getElementById("adminConfigReminderBanner"),
+      demoBanner: document.getElementById("demoBanner"),
+      adminLoginBtn: document.getElementById("adminLoginBtn"),
+      adminUserContainer: document.getElementById("adminUserContainer"),
+      adminAvatar: document.getElementById("adminAvatar"),
+      adminName: document.getElementById("adminName"),
+      adminRoleLabel: document.getElementById("adminRoleLabel"),
+      adminLogoutBtn: document.getElementById("adminLogoutBtn"),
+      adminToolbar: document.getElementById("adminToolbar"),
+      openAddModalBtn: document.getElementById("openAddModalBtn"),
+      seedDataBtn: document.getElementById("seedDataBtn"),
+      clearAllDataBtn: document.getElementById("clearAllDataBtn"),
+      personFilterContainer: document.getElementById("personFilterContainer"),
+      platformFilterDropdown: document.getElementById("platformFilterDropdown"),
+      copyShareLinkBtn: document.getElementById("copyShareLinkBtn"),
+      copyShareLinkText: document.getElementById("copyShareLinkText"),
+      selectedMonthDropdown: document.getElementById("selectedMonthDropdown"),
+      selectedMonthTotal: document.getElementById("selectedMonthTotal"),
+      selectedMonthFilterTag: document.getElementById("selectedMonthFilterTag"),
+      selectedMonthPending: document.getElementById("selectedMonthPending"),
+      selectedMonthPaid: document.getElementById("selectedMonthPaid"),
+      selectedMonthItemCount: document.getElementById("selectedMonthItemCount"),
+      totalRemainingBalance: document.getElementById("totalRemainingBalance"),
+      remainingFilterTag: document.getElementById("remainingFilterTag"),
+      totalPaidToDate: document.getElementById("totalPaidToDate"),
+      totalContractAmount: document.getElementById("totalContractAmount"),
+      overallProgressBar: document.getElementById("overallProgressBar"),
+      activePlatformsCountBadge: document.getElementById("activePlatformsCountBadge"),
+      activeInstallmentsCount: document.getElementById("activeInstallmentsCount"),
+      activeInstallmentsSubtext: document.getElementById("activeInstallmentsSubtext"),
+      totalPrincipalAmount: document.getElementById("totalPrincipalAmount"),
+      completedPlansBadge: document.getElementById("completedPlansBadge"),
+      tableLoadingState: document.getElementById("tableLoadingState"),
+      tableScrollWrapper: document.getElementById("tableScrollWrapper"),
+      scheduleTableHead: document.getElementById("scheduleTableHead"),
+      scheduleTableBody: document.getElementById("scheduleTableBody"),
+      scheduleTableFoot: document.getElementById("scheduleTableFoot"),
+      footerStatusNote: document.getElementById("footerStatusNote"),
+      // Add/Edit Modal + Calculator
+      installmentModal: document.getElementById("installmentModal"),
+      installmentModalTitle: document.getElementById("installmentModalTitle"),
+      closeInstallmentModalBtn: document.getElementById("closeInstallmentModalBtn"),
+      cancelInstallmentModalBtn: document.getElementById("cancelInstallmentModalBtn"),
+      installmentForm: document.getElementById("installmentForm"),
+      editItemId: document.getElementById("editItemId"),
+      inputPerson: document.getElementById("inputPerson"),
+      inputCardPreset: document.getElementById("inputCardPreset"),
+      inputCardCustom: document.getElementById("inputCardCustom"),
+      inputItemName: document.getElementById("inputItemName"),
+      inputStartMonth: document.getElementById("inputStartMonth"),
+      inputPrincipal: document.getElementById("inputPrincipal"),
+      inputPlanSelect: document.getElementById("inputPlanSelect"),
+      inputCustomMonths: document.getElementById("inputCustomMonths"),
+      inputInterestRate: document.getElementById("inputInterestRate"),
+      inputProcessingFee: document.getElementById("inputProcessingFee"),
+      calcAutoMonthlyDisplay: document.getElementById("calcAutoMonthlyDisplay"),
+      resetAutoMonthlyBtn: document.getElementById("resetAutoMonthlyBtn"),
+      inputMonthlyAmount: document.getElementById("inputMonthlyAmount"),
+      calcMonthlyPrincipal: document.getElementById("calcMonthlyPrincipal"),
+      calcMonthlyInterest: document.getElementById("calcMonthlyInterest"),
+      calcMonthlyFee: document.getElementById("calcMonthlyFee"),
+      calcTotalInterestFees: document.getElementById("calcTotalInterestFees"),
+      calcTotalPayable: document.getElementById("calcTotalPayable"),
+      inputNotes: document.getElementById("inputNotes"),
+      modalPreviewSpan: document.getElementById("modalPreviewSpan"),
+      // Confirmation Modal
+      confirmModal: document.getElementById("confirmModal"),
+      confirmModalTitle: document.getElementById("confirmModalTitle"),
+      confirmModalMessage: document.getElementById("confirmModalMessage"),
+      confirmModalCancelBtn: document.getElementById("confirmModalCancelBtn"),
+      confirmModalProceedBtn: document.getElementById("confirmModalProceedBtn"),
+      // Toast Container
+      toastContainer: document.getElementById("toastContainer")
+    };
+
+    // =========================================================================
+    // 6. UI HELPERS: TOASTS & CUSTOM CONFIRMATION DIALOG
+    // =========================================================================
+    function showToast(message, type = "info") {
+      const styles = {
+        success: "bg-emerald-900 text-emerald-50 border-emerald-700",
+        error: "bg-rose-900 text-rose-50 border-rose-700",
+        info: "bg-slate-900 text-white border-slate-700"
+      };
+      const toast = document.createElement("div");
+      toast.className = `pointer-events-auto rounded-xl border px-4 py-3 text-xs font-medium shadow-lg flex items-center justify-between gap-3 transition-all duration-200 ${styles[type] || styles.info}`;
+      toast.innerHTML = `<span>${escapeHtml(message)}</span>`;
+      els.toastContainer.appendChild(toast);
+
+      setTimeout(() => {
+        toast.classList.add("opacity-0", "translate-y-1");
+        setTimeout(() => toast.remove(), 220);
+      }, 3400);
+    }
+
+    function openConfirmModal({ title, message, confirmText = "Confirm", isDanger = false, onConfirm }) {
+      els.confirmModalTitle.textContent = title;
+      els.confirmModalMessage.textContent = message;
+      els.confirmModalProceedBtn.textContent = confirmText;
+
+      if (isDanger) {
+        els.confirmModalProceedBtn.className =
+          "px-4 py-2 rounded-xl text-xs font-semibold bg-rose-600 hover:bg-rose-500 text-white shadow-sm transition cursor-pointer";
+      } else {
+        els.confirmModalProceedBtn.className =
+          "px-4 py-2 rounded-xl text-xs font-semibold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-sm transition cursor-pointer";
+      }
+
+      confirmCallback = onConfirm;
+      els.confirmModal.classList.remove("hidden");
+    }
+
+    function closeConfirmModal() {
+      els.confirmModal.classList.add("hidden");
+      confirmCallback = null;
+    }
+
+    els.confirmModalCancelBtn.addEventListener("click", closeConfirmModal);
+    els.confirmModalProceedBtn.addEventListener("click", async () => {
+      const fn = confirmCallback;
+      closeConfirmModal();
+      if (typeof fn === "function") {
+        await fn();
+      }
+    });
+
+    function escapeHtml(str) {
+      return String(str ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    // =========================================================================
+    // 7. URL PARAMETER SYNC (?person=Paul)
+    // =========================================================================
+    function initPersonFilterFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      const rawPerson = params.get("person");
+      if (!rawPerson) {
+        state.selectedPerson = "All";
+        return;
+      }
+      const matched = FAMILY_MEMBERS.find(
+        (member) => member.toLowerCase() === rawPerson.trim().toLowerCase()
+      );
+      state.selectedPerson = matched || "All";
+    }
+
+    function setPersonFilter(person) {
+      state.selectedPerson = person;
+      const url = new URL(window.location.href);
+      if (person === "All") {
+        url.searchParams.delete("person");
+      } else {
+        url.searchParams.set("person", person);
+      }
+      window.history.replaceState({}, "", url.toString());
+      renderAll();
+    }
+
+    // =========================================================================
+    // 8. DATA LAYER (LIVE FIREBASE v10 FIRESTORE + DEMO LOCALSTORAGE FALLBACK)
+    // =========================================================================
+    function buildSeedRecords() {
+      return SAMPLE_MULTI_PLATFORM_ITEMS.map((item, idx) => {
+        const existingPaid = {};
+        (item.paidMonths || []).forEach((ym) => {
+          existingPaid[ym] = "paid";
+        });
+        return {
+          id: `sample-${Date.now()}-${idx}`,
+          person: item.person,
+          itemName: item.itemName,
+          cardPlatform: item.cardPlatform || "UnionBank",
+          principal: Number(item.principal) || 0,
+          interestRate: Number(item.interestRate) || 0,
+          processingFeePercent: Number(item.processingFeePercent) || 0,
+          totalMonths: Number(item.totalMonths),
+          monthlyAmount: Number(item.monthlyAmount),
+          startMonth: item.startMonth,
+          notes: item.notes || "",
+          schedule: buildScheduleMap(item.startMonth, item.totalMonths, existingPaid),
+          updatedAt: new Date().toISOString()
+        };
+      });
+    }
+
+    function loadDemoData() {
+      try {
+        const raw = localStorage.getItem(DEMO_STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            state.installments = parsed;
+            state.lastUpdated = new Date();
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn("Could not read demo data from localStorage:", err);
+      }
+      // Start with an empty state when 0 records exist
+      state.installments = [];
+      state.lastUpdated = new Date();
+    }
+
+    function saveDemoData() {
+      state.lastUpdated = new Date();
+      try {
+        localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(state.installments));
+      } catch (err) {
+        console.warn("Could not save demo data to localStorage:", err);
+      }
+      renderAll();
+    }
+
+    function initBackend() {
+      if (isDemoMode) {
+        els.connectionModeBadge.className =
+          "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800 border border-amber-200";
+        els.connectionModeText.textContent = "Demo Mode";
+        els.demoBanner.classList.remove("hidden");
+
+        loadDemoData();
+        els.tableLoadingState.classList.add("hidden");
+        els.tableScrollWrapper.classList.remove("hidden");
+        renderAll();
+        return;
+      }
+
+      // Live Firebase v10 Mode
+      try {
+        firebaseApp = initializeApp(firebaseConfig);
+        auth = getAuth(firebaseApp);
+        db = getFirestore(firebaseApp);
+
+        els.connectionModeBadge.className =
+          "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200";
+        els.connectionModeText.textContent = "Live Firestore";
+        els.demoBanner.classList.add("hidden");
+
+        // Listen for Google Auth state changes
+        onAuthStateChanged(auth, (user) => {
+          if (user) {
+            const email = (user.email || "").toLowerCase();
+            const isPlaceholderAllowlist = ADMIN_EMAILS.some(
+              (e) => e.trim().toLowerCase() === "your-email@gmail.com"
+            );
+            const allowed =
+              ADMIN_EMAILS.length === 0 ||
+              isPlaceholderAllowlist ||
+              ADMIN_EMAILS.map((e) => e.trim().toLowerCase()).includes(email);
+
+            state.currentUser = user;
+            state.isAdmin = allowed;
+
+            if (!allowed) {
+              showToast(`Signed in as ${user.email}, but email is not in ADMIN_EMAILS.`, "error");
+            } else {
+              showToast(`Signed in as ${user.displayName || user.email}`, "success");
+            }
+          } else {
+            state.currentUser = null;
+            state.isAdmin = false;
+          }
+          updateAuthUI();
+          renderAll();
+        });
+
+        // Subscribe to real-time Firestore collection
+        const installmentsRef = collection(db, "installments");
+        onSnapshot(
+          installmentsRef,
+          (snapshot) => {
+            const docs = [];
+            let latestTime = null;
+
+            snapshot.forEach((docSnap) => {
+              const data = docSnap.data();
+              const months = Number(data.totalMonths || data.terms) || 1;
+              const monthlyAmt = Number(data.monthlyAmount) || 0;
+              docs.push({
+                id: docSnap.id,
+                person: data.person || "Paul",
+                itemName: data.itemName || "Untitled Installment",
+                cardPlatform: data.cardPlatform || data.cardTag || "UnionBank",
+                principal: Number(data.principal) || monthlyAmt * months,
+                interestRate: Number(data.interestRate) || 0,
+                processingFeePercent: Number(data.processingFeePercent) || 0,
+                totalMonths: months,
+                monthlyAmount: monthlyAmt,
+                startMonth: data.startMonth || BASE_START_MONTH,
+                notes: data.notes || "",
+                schedule: data.schedule || buildScheduleMap(data.startMonth || BASE_START_MONTH, months)
+              });
+
+              if (data.updatedAt && typeof data.updatedAt.toDate === "function") {
+                const d = data.updatedAt.toDate();
+                if (!latestTime || d > latestTime) latestTime = d;
+              }
+            });
+
+            state.installments = docs;
+            state.lastUpdated = latestTime || new Date();
+            els.tableLoadingState.classList.add("hidden");
+            els.tableScrollWrapper.classList.remove("hidden");
+            renderAll();
+          },
+          (error) => {
+            console.error("Firestore onSnapshot error:", error);
+            els.tableLoadingState.classList.add("hidden");
+            els.tableScrollWrapper.classList.remove("hidden");
+            showToast(`Firestore read error: ${error.message}`, "error");
+          }
+        );
+      } catch (error) {
+        console.error("Firebase initialization failed:", error);
+        showToast(`Firebase init error: ${error.message}`, "error");
+      }
+    }
+
+    // =========================================================================
+    // 9. AUTHENTICATION HANDLERS (Google Popup or Demo Admin Toggle)
+    // =========================================================================
+    async function handleAdminLogin() {
+      if (isDemoMode) {
+        state.currentUser = {
+          displayName: "Paul (Demo Admin)",
+          email: "demo.admin@unionbank-tracker.ph",
+          photoURL: "https://placehold.co/32x32/f59e0b/ffffff?text=P"
+        };
+        state.isAdmin = true;
+        updateAuthUI();
+        renderAll();
+        showToast("Demo Admin Mode activated. You can now add, edit, or toggle cells.", "success");
+        return;
+      }
+
+      try {
+        const provider = new GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: "select_account" });
+        await signInWithPopup(auth, provider);
+      } catch (error) {
+        if (error.code !== "auth/popup-closed-by-user") {
+          console.error("Google Sign-In error:", error);
+          showToast(`Login failed: ${error.message}`, "error");
+        }
+      }
+    }
+
+    async function handleAdminLogout() {
+      if (isDemoMode) {
+        state.currentUser = null;
+        state.isAdmin = false;
+        updateAuthUI();
+        renderAll();
+        showToast("Signed out of Demo Admin Mode.", "info");
+        return;
+      }
+
+      try {
+        await signOut(auth);
+        showToast("Signed out successfully.", "info");
+      } catch (error) {
+        console.error("Sign-out error:", error);
+        showToast(`Sign-out failed: ${error.message}`, "error");
+      }
+    }
+
+    function updateAuthUI() {
+      const hasPlaceholderAdminEmail = ADMIN_EMAILS.some(
+        (e) => e.trim().toLowerCase() === "your-email@gmail.com"
+      );
+
+      if (state.currentUser) {
+        els.adminLoginBtn.classList.add("hidden");
+        els.adminUserContainer.classList.remove("hidden");
+        els.adminUserContainer.classList.add("flex");
+
+        els.adminName.textContent = state.currentUser.displayName || state.currentUser.email || "Admin";
+        els.adminAvatar.src =
+          state.currentUser.photoURL || "https://placehold.co/32x32/f59e0b/ffffff?text=A";
+
+        if (state.isAdmin) {
+          els.adminRoleLabel.textContent = "Admin Mode Active";
+          els.adminRoleLabel.className = "text-[10px] font-semibold text-emerald-700";
+          els.adminToolbar.classList.remove("hidden");
+          els.footerStatusNote.textContent = "Admin Mode Active • Click monthly cells to toggle status";
+          if (!isDemoMode && hasPlaceholderAdminEmail) {
+            els.adminConfigReminderBanner.classList.remove("hidden");
+          } else {
+            els.adminConfigReminderBanner.classList.add("hidden");
+          }
+        } else {
+          els.adminRoleLabel.textContent = "Read-Only (Not in Allowlist)";
+          els.adminRoleLabel.className = "text-[10px] font-semibold text-rose-600";
+          els.adminToolbar.classList.add("hidden");
+          els.adminConfigReminderBanner.classList.add("hidden");
+          els.footerStatusNote.textContent = "Public Viewer Mode • Read-Only Access";
+        }
+      } else {
+        els.adminLoginBtn.classList.remove("hidden");
+        els.adminUserContainer.classList.add("hidden");
+        els.adminUserContainer.classList.remove("flex");
+        els.adminToolbar.classList.add("hidden");
+        els.adminConfigReminderBanner.classList.add("hidden");
+        els.footerStatusNote.textContent = "Public Viewer Mode • Read-Only Access";
+      }
+    }
+
+    els.adminLoginBtn.addEventListener("click", handleAdminLogin);
+    els.adminLogoutBtn.addEventListener("click", handleAdminLogout);
+
+    // =========================================================================
+    // 10. ADMIN CRUD OPERATIONS (Add, Edit, Delete, Cell Toggle, Batch Seed)
+    // =========================================================================
+    async function saveInstallmentRecord(payload, editId) {
+      if (!state.isAdmin) {
+        showToast("Admin authentication required.", "error");
+        return;
+      }
+
+      if (isDemoMode) {
+        if (editId) {
+          const idx = state.installments.findIndex((i) => i.id === editId);
+          if (idx !== -1) {
+            state.installments[idx] = {
+              ...state.installments[idx],
+              ...payload,
+              updatedAt: new Date().toISOString()
+            };
+          }
+          showToast("Installment updated (Demo Mode).", "success");
+        } else {
+          state.installments.push({
+            id: `demo-${Date.now()}`,
+            ...payload,
+            updatedAt: new Date().toISOString()
+          });
+          showToast("New installment added (Demo Mode).", "success");
+        }
+        saveDemoData();
+        return;
+      }
+
+      try {
+        if (editId) {
+          const docRef = doc(db, "installments", editId);
+          await updateDoc(docRef, {
+            ...payload,
+            updatedAt: serverTimestamp()
+          });
+          showToast("Installment updated in Firestore.", "success");
+        } else {
+          await addDoc(collection(db, "installments"), {
+            ...payload,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          });
+          showToast("Installment saved to Firestore.", "success");
+        }
+      } catch (error) {
+        console.error("Error saving installment:", error);
+        showToast(`Save failed: ${error.message}`, "error");
+      }
+    }
+
+    async function toggleMonthCellStatus(itemId, monthKey) {
+      if (!state.isAdmin) return;
+
+      const item = state.installments.find((i) => i.id === itemId);
+      if (!item || !item.schedule || !(monthKey in item.schedule)) return;
+
+      const currentStatus = item.schedule[monthKey];
+      const nextStatus = currentStatus === "paid" ? "pending" : "paid";
+
+      if (isDemoMode) {
+        item.schedule[monthKey] = nextStatus;
+        item.updatedAt = new Date().toISOString();
+        saveDemoData();
+        showToast(
+          `${item.person} • ${formatMonthShort(monthKey)} marked as ${nextStatus.toUpperCase()}.`,
+          "success"
+        );
+        return;
+      }
+
+      try {
+        const docRef = doc(db, "installments", itemId);
+        await updateDoc(docRef, {
+          [`schedule.${monthKey}`]: nextStatus,
+          updatedAt: serverTimestamp()
+        });
+        showToast(
+          `${item.person} • ${formatMonthShort(monthKey)} marked as ${nextStatus.toUpperCase()}.`,
+          "success"
+        );
+      } catch (error) {
+        console.error("Error toggling month status:", error);
+        showToast(`Update failed: ${error.message}`, "error");
+      }
+    }
+
+    function requestDeleteInstallment(itemId) {
+      if (!state.isAdmin) return;
+      const item = state.installments.find((i) => i.id === itemId);
+      if (!item) return;
+
+      openConfirmModal({
+        title: "Delete Installment?",
+        message: `Are you sure you want to permanently remove "${item.itemName}" (${item.person} • ${formatPHP(item.monthlyAmount)}/mo)? This cannot be undone.`,
+        confirmText: "Delete Installment",
+        isDanger: true,
+        onConfirm: async () => {
+          if (isDemoMode) {
+            state.installments = state.installments.filter((i) => i.id !== itemId);
+            saveDemoData();
+            showToast("Installment deleted (Demo Mode).", "info");
+            return;
+          }
+
+          try {
+            await deleteDoc(doc(db, "installments", itemId));
+            showToast("Installment deleted from Firestore.", "info");
+          } catch (error) {
+            console.error("Error deleting installment:", error);
+            showToast(`Delete failed: ${error.message}`, "error");
+          }
+        }
+      });
+    }
+
+    function requestSeedInitialData() {
+      if (!state.isAdmin) return;
+
+      openConfirmModal({
+        title: "Load Sample Multi-Platform Data?",
+        message: `This will upload ${SAMPLE_MULTI_PLATFORM_ITEMS.length} sample installment records across SPayLater, UnionBank, BDO, and GCash GGives starting November 2026.`,
+        confirmText: "Load Sample Data",
+        isDanger: false,
+        onConfirm: async () => {
+          const records = buildSeedRecords();
+
+          if (isDemoMode) {
+            state.installments = [...state.installments, ...records];
+            saveDemoData();
+            showToast(`Loaded ${records.length} sample items into Demo schedule.`, "success");
+            return;
+          }
+
+          try {
+            const batch = writeBatch(db);
+            const colRef = collection(db, "installments");
+            records.forEach((rec) => {
+              const newDocRef = doc(colRef);
+              const { id, ...cleanData } = rec;
+              batch.set(newDocRef, {
+                ...cleanData,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+              });
+            });
+            await batch.commit();
+            showToast(`Successfully loaded ${records.length} sample items to Firestore!`, "success");
+          } catch (error) {
+            console.error("Batch seed error:", error);
+            showToast(`Load sample failed: ${error.message}`, "error");
+          }
+        }
+      });
+    }
+
+    function requestClearAllData() {
+      if (!state.isAdmin) return;
+
+      if (state.installments.length === 0) {
+        showToast("There are no installment records to clear.", "info");
+        return;
+      }
+
+      openConfirmModal({
+        title: "Clear All Installment Data?",
+        message: `This will permanently delete all ${state.installments.length} installment record(s) from ${isDemoMode ? "local storage" : "Firestore"}. This action cannot be undone.`,
+        confirmText: "Yes, Clear All Data",
+        isDanger: true,
+        onConfirm: async () => {
+          if (isDemoMode) {
+            state.installments = [];
+            saveDemoData();
+            showToast("All installment records cleared.", "info");
+            return;
+          }
+
+          try {
+            // Firestore writeBatch supports up to 500 operations per batch
+            const chunkSize = 450;
+            for (let i = 0; i < state.installments.length; i += chunkSize) {
+              const chunk = state.installments.slice(i, i + chunkSize);
+              const batch = writeBatch(db);
+              chunk.forEach((item) => {
+                batch.delete(doc(db, "installments", item.id));
+              });
+              await batch.commit();
+            }
+            showToast("All installment records deleted from Firestore.", "info");
+          } catch (error) {
+            console.error("Clear all data error:", error);
+            showToast(`Clear failed: ${error.message}`, "error");
+          }
+        }
+      });
+    }
+
+    els.seedDataBtn.addEventListener("click", requestSeedInitialData);
+    els.clearAllDataBtn.addEventListener("click", requestClearAllData);
+
+    // =========================================================================
+    // 11. ADD / EDIT INSTALLMENT MODAL & REAL-TIME INTEREST CALCULATOR
+    // =========================================================================
+    function getSelectedPlanMonths() {
+      if (els.inputPlanSelect.value === "custom") {
+        return Math.max(1, parseInt(els.inputCustomMonths.value, 10) || 1);
+      }
+      return Math.max(1, parseInt(els.inputPlanSelect.value, 10) || 6);
+    }
+
+    function getSelectedCardPlatform() {
+      if (els.inputCardPreset.value === "Other / Custom") {
+        return els.inputCardCustom.value.trim() || "Custom Card";
+      }
+      return els.inputCardPreset.value || "UnionBank";
+    }
+
+    function syncCardPlatformInputs(platformValue) {
+      const matchedPreset = CARD_PLATFORM_PRESETS.find(
+        (p) => p.toLowerCase() === String(platformValue || "").trim().toLowerCase()
+      );
+      if (matchedPreset) {
+        els.inputCardPreset.value = matchedPreset;
+        els.inputCardCustom.classList.add("hidden");
+        els.inputCardCustom.value = "";
+      } else if (platformValue) {
+        els.inputCardPreset.value = "Other / Custom";
+        els.inputCardCustom.classList.remove("hidden");
+        els.inputCardCustom.value = platformValue;
+      } else {
+        els.inputCardPreset.value = "UnionBank";
+        els.inputCardCustom.classList.add("hidden");
+        els.inputCardCustom.value = "";
+      }
+    }
+
+    function syncPlanMonthsInputs(monthsValue) {
+      const presetValues = ["3", "6", "9", "12", "18", "24", "36"];
+      const strVal = String(monthsValue || 6);
+      if (presetValues.includes(strVal)) {
+        els.inputPlanSelect.value = strVal;
+        els.inputCustomMonths.classList.add("hidden");
+        els.inputCustomMonths.value = strVal;
+      } else {
+        els.inputPlanSelect.value = "custom";
+        els.inputCustomMonths.classList.remove("hidden");
+        els.inputCustomMonths.value = strVal;
+      }
+    }
+
+    /**
+     * Real-Time Philippine Add-On Installment Calculation:
+     * - Monthly Principal = Principal / Months
+     * - Monthly Interest = Principal * (MonthlyInterestRate / 100)
+     * - Total Processing Fee = Principal * (ProcessingFeePercent / 100)
+     * - Monthly Fee Share = Total Processing Fee / Months
+     * - Auto Monthly Payment = Monthly Principal + Monthly Interest + Monthly Fee Share
+     */
+    function recalculateInstallmentModal(forceUpdateFinalInput = true) {
+      const principal = Math.max(0, parseFloat(els.inputPrincipal.value) || 0);
+      const months = getSelectedPlanMonths();
+      const interestRate = Math.max(0, parseFloat(els.inputInterestRate.value) || 0);
+      const processingFeePercent = Math.max(0, parseFloat(els.inputProcessingFee.value) || 0);
+      const startMonth = els.inputStartMonth.value || BASE_START_MONTH;
+      const endMonth = addMonths(startMonth, months - 1);
+
+      const monthlyPrincipal = principal / months;
+      const monthlyInterest = principal * (interestRate / 100);
+      const totalProcessingFee = principal * (processingFeePercent / 100);
+      const monthlyFeeShare = totalProcessingFee / months;
+
+      const autoMonthlyPayment = monthlyPrincipal + monthlyInterest + monthlyFeeShare;
+      const roundedAutoMonthly = Math.round(autoMonthlyPayment * 100) / 100;
+      lastAutoCalculatedMonthly = roundedAutoMonthly;
+
+      if (forceUpdateFinalInput || !isMonthlyManuallyOverridden) {
+        els.inputMonthlyAmount.value = roundedAutoMonthly > 0 ? roundedAutoMonthly.toFixed(2) : "";
+        isMonthlyManuallyOverridden = false;
+        els.resetAutoMonthlyBtn.classList.add("hidden");
+      }
+
+      const finalMonthly = Math.max(0, parseFloat(els.inputMonthlyAmount.value) || roundedAutoMonthly);
+      const totalPayable = finalMonthly * months;
+      const totalInterestAndFees = Math.max(0, totalPayable - principal);
+
+      els.modalPreviewSpan.textContent = `${formatMonthShort(startMonth)} → ${formatMonthShort(endMonth)} (${months} mos)`;
+      els.calcAutoMonthlyDisplay.textContent = formatPHP(roundedAutoMonthly);
+      els.calcMonthlyPrincipal.textContent = formatPHP(monthlyPrincipal);
+      els.calcMonthlyInterest.textContent = formatPHP(monthlyInterest);
+      els.calcMonthlyFee.textContent = formatPHP(monthlyFeeShare);
+      els.calcTotalInterestFees.textContent = formatPHP(totalInterestAndFees);
+      els.calcTotalPayable.textContent = formatPHP(totalPayable);
+    }
+
+    function openInstallmentModal(itemToEdit = null) {
+      if (!state.isAdmin) return;
+
+      if (itemToEdit) {
+        const months = Number(itemToEdit.totalMonths || itemToEdit.terms) || 6;
+        const monthlyAmt = Number(itemToEdit.monthlyAmount) || 0;
+        const principal = Number(itemToEdit.principal) || monthlyAmt * months;
+
+        els.installmentModalTitle.textContent = "Edit Installment";
+        els.editItemId.value = itemToEdit.id;
+        els.inputPerson.value = itemToEdit.person;
+        syncCardPlatformInputs(itemToEdit.cardPlatform || itemToEdit.cardTag || "UnionBank");
+        els.inputItemName.value = itemToEdit.itemName;
+        els.inputStartMonth.value = itemToEdit.startMonth || BASE_START_MONTH;
+        els.inputPrincipal.value = principal > 0 ? principal : "";
+        syncPlanMonthsInputs(months);
+        els.inputInterestRate.value = Number(itemToEdit.interestRate) || 0;
+        els.inputProcessingFee.value = Number(itemToEdit.processingFeePercent) || 0;
+        els.inputNotes.value = itemToEdit.notes || "";
+
+        // Calculate auto value first, then preserve saved monthlyAmount if manually adjusted
+        recalculateInstallmentModal(true);
+        if (Math.abs(monthlyAmt - lastAutoCalculatedMonthly) >= 0.01) {
+          els.inputMonthlyAmount.value = monthlyAmt.toFixed(2);
+          isMonthlyManuallyOverridden = true;
+          els.resetAutoMonthlyBtn.classList.remove("hidden");
+          recalculateInstallmentModal(false);
+        }
+      } else {
+        els.installmentModalTitle.textContent = "Add New Installment";
+        els.editItemId.value = "";
+        els.inputPerson.value =
+          state.selectedPerson !== "All" ? state.selectedPerson : "Paul";
+        syncCardPlatformInputs(
+          state.selectedPlatform !== "All" ? state.selectedPlatform : "UnionBank"
+        );
+        els.inputItemName.value = "";
+        els.inputStartMonth.value = BASE_START_MONTH;
+        els.inputPrincipal.value = "";
+        syncPlanMonthsInputs(6);
+        els.inputInterestRate.value = "0";
+        els.inputProcessingFee.value = "0";
+        els.inputMonthlyAmount.value = "";
+        els.inputNotes.value = "";
+        isMonthlyManuallyOverridden = false;
+        els.resetAutoMonthlyBtn.classList.add("hidden");
+        recalculateInstallmentModal(true);
+      }
+
+      els.installmentModal.classList.remove("hidden");
+      setTimeout(() => els.inputItemName.focus(), 50);
+    }
+
+    function closeInstallmentModal() {
+      els.installmentModal.classList.add("hidden");
+    }
+
+    els.openAddModalBtn.addEventListener("click", () => openInstallmentModal(null));
+    els.closeInstallmentModalBtn.addEventListener("click", closeInstallmentModal);
+    els.cancelInstallmentModalBtn.addEventListener("click", closeInstallmentModal);
+
+    els.inputCardPreset.addEventListener("change", () => {
+      if (els.inputCardPreset.value === "Other / Custom") {
+        els.inputCardCustom.classList.remove("hidden");
+        els.inputCardCustom.focus();
+      } else {
+        els.inputCardCustom.classList.add("hidden");
+      }
+    });
+
+    els.inputPlanSelect.addEventListener("change", () => {
+      if (els.inputPlanSelect.value === "custom") {
+        els.inputCustomMonths.classList.remove("hidden");
+        els.inputCustomMonths.focus();
+      } else {
+        els.inputCustomMonths.classList.add("hidden");
+      }
+      isMonthlyManuallyOverridden = false;
+      recalculateInstallmentModal(true);
+    });
+
+    [els.inputPrincipal, els.inputCustomMonths, els.inputInterestRate, els.inputProcessingFee].forEach((input) => {
+      input.addEventListener("input", () => {
+        isMonthlyManuallyOverridden = false;
+        recalculateInstallmentModal(true);
+      });
+    });
+
+    els.inputStartMonth.addEventListener("input", () => recalculateInstallmentModal(false));
+
+    els.inputMonthlyAmount.addEventListener("input", () => {
+      const typed = parseFloat(els.inputMonthlyAmount.value) || 0;
+      isMonthlyManuallyOverridden = Math.abs(typed - lastAutoCalculatedMonthly) >= 0.01;
+      if (isMonthlyManuallyOverridden) {
+        els.resetAutoMonthlyBtn.classList.remove("hidden");
+      } else {
+        els.resetAutoMonthlyBtn.classList.add("hidden");
+      }
+      recalculateInstallmentModal(false);
+    });
+
+    els.resetAutoMonthlyBtn.addEventListener("click", () => {
+      isMonthlyManuallyOverridden = false;
+      recalculateInstallmentModal(true);
+    });
+
+    els.installmentForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const editId = els.editItemId.value.trim();
+      const person = els.inputPerson.value;
+      const cardPlatform = getSelectedCardPlatform();
+      const itemName = els.inputItemName.value.trim();
+      const principal = Math.max(0, parseFloat(els.inputPrincipal.value) || 0);
+      const totalMonths = getSelectedPlanMonths();
+      const interestRate = Math.max(0, parseFloat(els.inputInterestRate.value) || 0);
+      const processingFeePercent = Math.max(0, parseFloat(els.inputProcessingFee.value) || 0);
+      const monthlyAmount = parseFloat(els.inputMonthlyAmount.value);
+      const startMonth = els.inputStartMonth.value || BASE_START_MONTH;
+      const notes = els.inputNotes.value.trim();
+
+      if (!itemName || isNaN(monthlyAmount) || monthlyAmount <= 0) {
+        showToast("Please enter a valid item description, principal, and monthly amount.", "error");
+        return;
+      }
+
+      // Preserve existing paid statuses if editing an existing item
+      let existingSchedule = {};
+      if (editId) {
+        const existingItem = state.installments.find((i) => i.id === editId);
+        if (existingItem && existingItem.schedule) {
+          existingSchedule = existingItem.schedule;
+        }
+      }
+
+      const schedule = buildScheduleMap(startMonth, totalMonths, existingSchedule);
+
+      closeInstallmentModal();
+      await saveInstallmentRecord(
+        {
+          person,
+          cardPlatform,
+          itemName,
+          principal: principal > 0 ? principal : Math.round(monthlyAmount * totalMonths * 100) / 100,
+          interestRate,
+          processingFeePercent,
+          totalMonths,
+          monthlyAmount: Math.round(monthlyAmount * 100) / 100,
+          startMonth,
+          notes,
+          schedule
+        },
+        editId || null
+      );
+    });
+
+    // =========================================================================
+    // 12. COMPUTE ROLLING MONTHS & RENDER ALL VIEWS
+    // =========================================================================
+    function computeRollingMonths() {
+      let minIdx = ymToIndex(BASE_START_MONTH);
+      let maxIdx = ymToIndex(BASE_START_MONTH) + (MIN_ROLLING_MONTHS - 1);
+
+      state.installments.forEach((item) => {
+        const startIdx = ymToIndex(item.startMonth || BASE_START_MONTH);
+        const monthsCount = Math.max(1, Number(item.totalMonths || item.terms) || 1);
+        const endIdx = startIdx + monthsCount - 1;
+        if (startIdx < minIdx) minIdx = startIdx;
+        if (endIdx > maxIdx) maxIdx = endIdx;
+      });
+
+      const months = [];
+      for (let idx = minIdx; idx <= maxIdx; idx++) {
+        months.push(indexToYm(idx));
+      }
+      state.rollingMonths = months;
+
+      // Keep selectedMonth valid
+      if (!months.includes(state.selectedMonth)) {
+        state.selectedMonth = months.includes(BASE_START_MONTH)
+          ? BASE_START_MONTH
+          : months[0];
+      }
+    }
+
+    function getFilteredInstallments() {
+      const sorted = [...state.installments].sort((a, b) => {
+        if (a.person !== b.person) return a.person.localeCompare(b.person);
+        return a.itemName.localeCompare(b.itemName);
+      });
+
+      return sorted.filter((item) => {
+        const matchesPerson =
+          state.selectedPerson === "All" ||
+          item.person.toLowerCase() === state.selectedPerson.toLowerCase();
+        const itemPlatform = (item.cardPlatform || item.cardTag || "UnionBank").toLowerCase();
+        const matchesPlatform =
+          state.selectedPlatform === "All" ||
+          itemPlatform === state.selectedPlatform.toLowerCase();
+        return matchesPerson && matchesPlatform;
+      });
+    }
+
+    function renderPlatformDropdown() {
+      const usedPlatforms = new Set();
+      state.installments.forEach((item) => {
+        const p = (item.cardPlatform || item.cardTag || "").trim();
+        if (p) usedPlatforms.add(p);
+      });
+
+      const sortedPlatforms = Array.from(usedPlatforms).sort((a, b) => a.localeCompare(b));
+      if (
+        state.selectedPlatform !== "All" &&
+        !sortedPlatforms.some((p) => p.toLowerCase() === state.selectedPlatform.toLowerCase())
+      ) {
+        state.selectedPlatform = "All";
+      }
+
+      els.platformFilterDropdown.innerHTML = [
+        `<option value="All">All Cards / Platforms (${state.installments.length})</option>`,
+        ...sortedPlatforms.map((platform) => {
+          const count = state.installments.filter(
+            (i) => (i.cardPlatform || i.cardTag || "").toLowerCase() === platform.toLowerCase()
+          ).length;
+          const selectedAttr =
+            state.selectedPlatform.toLowerCase() === platform.toLowerCase() ? "selected" : "";
+          return `<option value="${escapeHtml(platform)}" ${selectedAttr}>${escapeHtml(platform)} (${count})</option>`;
+        })
+      ].join("");
+    }
+
+    function renderFilterPills() {
+      els.personFilterContainer.innerHTML = "";
+
+      FAMILY_MEMBERS.forEach((member) => {
+        const count =
+          member === "All"
+            ? state.installments.length
+            : state.installments.filter(
+                (i) => i.person.toLowerCase() === member.toLowerCase()
+              ).length;
+
+        const isActive = state.selectedPerson.toLowerCase() === member.toLowerCase();
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.setAttribute("aria-pressed", String(isActive));
+        btn.className = isActive
+          ? "inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold bg-slate-900 text-white shadow-xs transition shrink-0 cursor-pointer"
+          : "inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition shrink-0 cursor-pointer";
+
+        const badgeClass = isActive
+          ? "px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-400 text-slate-950"
+          : "px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600";
+
+        btn.innerHTML = `
+          <span>${escapeHtml(member)}</span>
+          <span class="${badgeClass} tabular-nums">${count}</span>
+        `;
+        btn.addEventListener("click", () => setPersonFilter(member));
+        els.personFilterContainer.appendChild(btn);
+      });
+    }
+
+    function renderSummaryCards(filteredItems) {
+      // Populate Month Selector Dropdown
+      els.selectedMonthDropdown.innerHTML = state.rollingMonths
+        .map(
+          (ym) =>
+            `<option value="${ym}" ${ym === state.selectedMonth ? "selected" : ""}>${formatMonthLong(ym)}</option>`
+        )
+        .join("");
+
+      const activeFilters = [];
+      if (state.selectedPerson !== "All") activeFilters.push(state.selectedPerson);
+      if (state.selectedPlatform !== "All") activeFilters.push(state.selectedPlatform);
+      const filterLabel = activeFilters.length > 0 ? `(${activeFilters.join(" • ")})` : "(All)";
+
+      els.selectedMonthFilterTag.textContent = filterLabel;
+      els.remainingFilterTag.textContent = filterLabel;
+
+      // Card 1: Total Due for Selected Month
+      let monthTotal = 0;
+      let monthPending = 0;
+      let monthPaid = 0;
+      let monthActiveCount = 0;
+
+      // Card 2 & 3: Remaining Balance & Active Plans across all months
+      let totalRemaining = 0;
+      let totalPaidAll = 0;
+      let totalContractAll = 0;
+      let totalPrincipalAll = 0;
+      let ongoingPlansCount = 0;
+      let completedPlansCount = 0;
+      const distinctPlatforms = new Set();
+
+      filteredItems.forEach((item) => {
+        const amt = Number(item.monthlyAmount) || 0;
+        const schedule = item.schedule || {};
+        const statuses = Object.values(schedule);
+        const monthsCount = statuses.length || Number(item.totalMonths || item.terms) || 1;
+
+        totalPrincipalAll += Number(item.principal) || amt * monthsCount;
+        distinctPlatforms.add(item.cardPlatform || item.cardTag || "UnionBank");
+
+        const hasUnpaid = statuses.some((s) => s !== "paid");
+        if (hasUnpaid) {
+          ongoingPlansCount += 1;
+        } else if (statuses.length > 0) {
+          completedPlansCount += 1;
+        }
+
+        // Selected Month Breakdown
+        if (state.selectedMonth in schedule) {
+          monthTotal += amt;
+          monthActiveCount += 1;
+          if (schedule[state.selectedMonth] === "paid") {
+            monthPaid += amt;
+          } else {
+            monthPending += amt;
+          }
+        }
+
+        // Overall Plan Breakdown
+        statuses.forEach((status) => {
+          totalContractAll += amt;
+          if (status === "paid") {
+            totalPaidAll += amt;
+          } else {
+            totalRemaining += amt;
+          }
+        });
+      });
+
+      els.selectedMonthTotal.textContent = formatPHP(monthTotal);
+      els.selectedMonthPending.textContent = formatPHP(monthPending);
+      els.selectedMonthPaid.textContent = formatPHP(monthPaid);
+      els.selectedMonthItemCount.textContent =
+        monthActiveCount === 1 ? "1 item due" : `${monthActiveCount} items due`;
+
+      els.totalRemainingBalance.textContent = formatPHP(totalRemaining);
+      els.totalPaidToDate.textContent = formatPHP(totalPaidAll);
+      els.totalContractAmount.textContent = formatPHP(totalContractAll);
+
+      const pctPaid =
+        totalContractAll > 0 ? Math.min(100, Math.round((totalPaidAll / totalContractAll) * 100)) : 0;
+      els.overallProgressBar.style.width = `${pctPaid}%`;
+
+      els.activeInstallmentsCount.textContent = String(ongoingPlansCount);
+      els.activeInstallmentsSubtext.textContent =
+        ongoingPlansCount === 1 ? "ongoing plan" : "ongoing plans";
+      els.activePlatformsCountBadge.textContent =
+        distinctPlatforms.size === 1 ? "1 Platform" : `${distinctPlatforms.size} Platforms`;
+      els.totalPrincipalAmount.textContent = formatPHP(totalPrincipalAll);
+      els.completedPlansBadge.textContent = `${completedPlansCount} paid off`;
+    }
+
+    function renderScheduleTable(filteredItems) {
+      const months = state.rollingMonths;
+
+      // 1. Render Table Header (<thead>)
+      const monthHeaderCells = months
+        .map((ym) => {
+          const isSelected = ym === state.selectedMonth;
+          return `
+            <th
+              scope="col"
+              data-month-header="${ym}"
+              title="Click to select ${formatMonthLong(ym)} in summary card"
+              class="min-w-[126px] px-3 py-3 text-center select-none cursor-pointer transition border-l border-slate-200/80 ${
+                isSelected
+                  ? "bg-amber-100/90 text-amber-950 ring-inset ring-2 ring-amber-400/80"
+                  : "hover:bg-slate-100 text-slate-600"
+              }"
+            >
+              <div class="flex flex-col items-center gap-0.5">
+                <span>${formatMonthShort(ym)}</span>
+                ${
+                  isSelected
+                    ? '<span class="text-[9px] font-bold uppercase tracking-wider text-amber-700">Selected</span>'
+                    : '<span class="text-[9px] font-normal text-slate-400">View Due</span>'
+                }
+              </div>
+            </th>
+          `;
+        })
+        .join("");
+
+      const adminActionHeader = state.isAdmin
+        ? `<th scope="col" class="min-w-[96px] px-3 py-3 text-center border-l border-slate-200 bg-slate-50">Actions</th>`
+        : "";
+
+      els.scheduleTableHead.innerHTML = `
+        <tr>
+          <th
+            scope="col"
+            class="sticky left-0 z-20 bg-slate-50 min-w-[190px] max-w-[210px] sm:min-w-[270px] sm:max-w-[300px] px-4 py-3 text-left shadow-[4px_0_8px_-4px_rgba(15,23,42,0.08)]"
+          >
+            Member &amp; Installment Item
+          </th>
+          ${monthHeaderCells}
+          ${adminActionHeader}
+        </tr>
+      `;
+
+      // Attach click handlers on month headers
+      els.scheduleTableHead.querySelectorAll("[data-month-header]").forEach((th) => {
+        th.addEventListener("click", () => {
+          state.selectedMonth = th.getAttribute("data-month-header");
+          renderAll();
+        });
+      });
+
+      // 2. Render Table Body (<tbody>)
+      if (filteredItems.length === 0) {
+        const colSpan = 1 + months.length + (state.isAdmin ? 1 : 0);
+        const hasAnyItems = state.installments.length > 0;
+        els.scheduleTableBody.innerHTML = `
+          <tr>
+            <td colspan="${colSpan}" class="px-6 py-12 text-center">
+              <div class="max-w-md mx-auto space-y-3">
+                <p class="text-sm font-bold text-slate-800">
+                  ${
+                    hasAnyItems
+                      ? "No installments match the current filter."
+                      : "No installments recorded yet."
+                  }
+                </p>
+                <p class="text-xs text-slate-500 leading-relaxed">
+                  ${
+                    hasAnyItems
+                      ? "Try switching back to All Members and All Cards / Platforms to view every active schedule."
+                      : state.isAdmin
+                        ? "Click + Add Installment to calculate and record a new purchase, or click Load Sample Data to preview multi-platform schedules."
+                        : "The schedule is currently empty. Sign in via Admin Login in the header to add installments."
+                  }
+                </p>
+                <div class="pt-1 flex flex-wrap items-center justify-center gap-2">
+                  ${
+                    hasAnyItems
+                      ? `<button type="button" id="resetFilterEmptyBtn" class="inline-flex items-center px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-white hover:bg-slate-800 transition cursor-pointer">Reset Filters</button>`
+                      : state.isAdmin
+                        ? `
+                          <button type="button" id="emptyStateAddBtn" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-xs transition cursor-pointer">+ Add First Installment</button>
+                          <button type="button" id="emptyStateSeedBtn" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-800 transition cursor-pointer">Load Sample Data</button>
+                        `
+                        : ""
+                  }
+                </div>
+              </div>
+            </td>
+          </tr>
+        `;
+        const resetBtn = document.getElementById("resetFilterEmptyBtn");
+        if (resetBtn) {
+          resetBtn.addEventListener("click", () => {
+            state.selectedPlatform = "All";
+            setPersonFilter("All");
+          });
+        }
+        const emptyAddBtn = document.getElementById("emptyStateAddBtn");
+        if (emptyAddBtn) {
+          emptyAddBtn.addEventListener("click", () => openInstallmentModal(null));
+        }
+        const emptySeedBtn = document.getElementById("emptyStateSeedBtn");
+        if (emptySeedBtn) {
+          emptySeedBtn.addEventListener("click", requestSeedInitialData);
+        }
+      } else {
+        els.scheduleTableBody.innerHTML = filteredItems
+          .map((item) => {
+            const schedule = item.schedule || {};
+            const totalTerms = Object.keys(schedule).length || item.totalMonths || item.terms || 1;
+            const paidCount = Object.values(schedule).filter((s) => s === "paid").length;
+            const badgeStyle =
+              PERSON_BADGE_STYLES[item.person] ||
+              "bg-slate-100 text-slate-800 border-slate-200";
+            const platformLabel = item.cardPlatform || item.cardTag || "UnionBank";
+            const platformBadgeStyle = getPlatformBadgeClass(platformLabel);
+            const rateTag =
+              Number(item.interestRate) > 0
+                ? `${Number(item.interestRate).toFixed(2)}%/mo`
+                : "0% int";
+
+            const monthCells = months
+              .map((ym) => {
+                const isSelectedCol = ym === state.selectedMonth;
+                const colHighlight = isSelectedCol ? "bg-amber-50/40" : "";
+
+                if (!(ym in schedule)) {
+                  return `
+                    <td class="px-2.5 py-3 text-center border-l border-slate-100 ${colHighlight}">
+                      <span class="text-slate-300 text-xs select-none">&mdash;</span>
+                    </td>
+                  `;
+                }
+
+                const status = schedule[ym];
+                const isPaid = status === "paid";
+
+                const pillStyle = isPaid
+                  ? "bg-emerald-50 border-emerald-300 text-emerald-800"
+                  : "bg-amber-50 border-amber-300 text-amber-900";
+
+                const statusLabel = isPaid ? "Paid" : "Pending";
+                const statusIcon = isPaid
+                  ? `<svg class="w-3 h-3 text-emerald-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>`
+                  : `<span class="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"></span>`;
+
+                const adminInteractiveClass = state.isAdmin
+                  ? "cursor-pointer hover:scale-[1.03] active:scale-[0.98] hover:shadow-xs ring-offset-1 hover:ring-2 hover:ring-slate-400/50"
+                  : "cursor-default";
+
+                const titleAttr = state.isAdmin
+                  ? `Click to toggle ${formatMonthShort(ym)} between Pending and Paid`
+                  : `${formatMonthShort(ym)}: ${statusLabel}`;
+
+                return `
+                  <td class="px-2 py-2.5 text-center border-l border-slate-100 ${colHighlight}">
+                    <div
+                      ${state.isAdmin ? `data-toggle-item="${escapeHtml(item.id)}" data-toggle-month="${ym}" role="button" tabindex="0"` : ""}
+                      title="${escapeHtml(titleAttr)}"
+                      class="rounded-xl border px-2.5 py-2 transition-all duration-150 ${pillStyle} ${adminInteractiveClass}"
+                    >
+                      <div class="text-xs font-bold tabular-nums leading-tight">
+                        ${formatPHP(item.monthlyAmount)}
+                      </div>
+                      <div class="mt-1 inline-flex items-center justify-center gap-1 text-[10px] font-semibold uppercase tracking-wide opacity-90">
+                        ${statusIcon}
+                        <span>${statusLabel}</span>
+                      </div>
+                    </div>
+                  </td>
+                `;
+              })
+              .join("");
+
+            const adminActionsCell = state.isAdmin
+              ? `
+                <td class="px-2.5 py-2.5 text-center border-l border-slate-200/80 whitespace-nowrap">
+                  <div class="inline-flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      data-edit-id="${escapeHtml(item.id)}"
+                      title="Edit installment"
+                      class="p-2 rounded-lg text-slate-600 hover:text-amber-700 hover:bg-amber-50 border border-slate-200 hover:border-amber-200 transition cursor-pointer"
+                    >
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      data-delete-id="${escapeHtml(item.id)}"
+                      title="Delete installment"
+                      class="p-2 rounded-lg text-slate-600 hover:text-rose-700 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 transition cursor-pointer"
+                    >
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      </svg>
+                    </button>
+                  </div>
+                </td>
+              `
+              : "";
+
+            return `
+              <tr class="group hover:bg-slate-50/80 transition-colors">
+                <!-- Sticky Left Column: Person Badge + Card/Platform Badge + Item & Terms -->
+                <td class="sticky left-0 z-10 bg-white group-hover:bg-slate-50 transition-colors min-w-[200px] max-w-[225px] sm:min-w-[285px] sm:max-w-[315px] px-4 py-3.5 align-top shadow-[4px_0_8px_-4px_rgba(15,23,42,0.08)]">
+                  <div class="flex flex-wrap items-center gap-1.5 mb-1">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold border ${badgeStyle}">
+                      ${escapeHtml(item.person)}
+                    </span>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold border ${platformBadgeStyle}">
+                      ${escapeHtml(platformLabel)}
+                    </span>
+                    <span class="text-[11px] font-semibold text-slate-500 tabular-nums ml-auto">
+                      ${paidCount}/${totalTerms} paid
+                    </span>
+                  </div>
+                  <p class="text-xs sm:text-sm font-semibold text-slate-900 leading-snug line-clamp-2" title="${escapeHtml(item.itemName)}">
+                    ${escapeHtml(item.itemName)}
+                  </p>
+                  <p class="text-[11px] text-slate-500 mt-1 tabular-nums">
+                    <strong class="font-semibold text-slate-700">${formatPHP(item.monthlyAmount)}</strong>/mo &bull; ${totalTerms} mos &bull; ${rateTag}
+                  </p>
+                  ${
+                    item.notes
+                      ? `<p class="text-[11px] text-slate-400 mt-0.5 truncate" title="${escapeHtml(item.notes)}">${escapeHtml(item.notes)}</p>`
+                      : ""
+                  }
+                </td>
+                ${monthCells}
+                ${adminActionsCell}
+              </tr>
+            `;
+          })
+          .join("");
+
+        // Bind Admin cell toggle & row Edit/Delete listeners
+        if (state.isAdmin) {
+          els.scheduleTableBody.querySelectorAll("[data-toggle-item]").forEach((cell) => {
+            const triggerToggle = () => {
+              const itemId = cell.getAttribute("data-toggle-item");
+              const monthKey = cell.getAttribute("data-toggle-month");
+              toggleMonthCellStatus(itemId, monthKey);
+            };
+            cell.addEventListener("click", triggerToggle);
+            cell.addEventListener("keydown", (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                triggerToggle();
+              }
+            });
+          });
+
+          els.scheduleTableBody.querySelectorAll("[data-edit-id]").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              const id = btn.getAttribute("data-edit-id");
+              const found = state.installments.find((i) => i.id === id);
+              if (found) openInstallmentModal(found);
+            });
+          });
+
+          els.scheduleTableBody.querySelectorAll("[data-delete-id]").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              const id = btn.getAttribute("data-delete-id");
+              requestDeleteInstallment(id);
+            });
+          });
+        }
+      }
+
+      // 3. Render Table Footer Totals Row (<tfoot>)
+      const footerMonthCells = months
+        .map((ym) => {
+          let sum = 0;
+          let pendingSum = 0;
+          filteredItems.forEach((item) => {
+            if (item.schedule && ym in item.schedule) {
+              const amt = Number(item.monthlyAmount) || 0;
+              sum += amt;
+              if (item.schedule[ym] !== "paid") pendingSum += amt;
+            }
+          });
+
+          const isSelected = ym === state.selectedMonth;
+          return `
+            <td class="px-3 py-3 text-center border-l border-slate-200/80 tabular-nums ${
+              isSelected ? "bg-amber-100/70 text-amber-950" : "text-slate-800"
+            }">
+              <div class="text-xs font-extrabold">${formatPHP(sum)}</div>
+              ${
+                sum > 0
+                  ? `<div class="text-[10px] font-medium ${
+                      pendingSum === 0 ? "text-emerald-700" : "text-amber-700"
+                    } mt-0.5">${pendingSum === 0 ? "All Paid" : `${formatPHP(pendingSum)} due`}</div>`
+                  : `<div class="text-[10px] font-normal text-slate-400 mt-0.5">No bills</div>`
+              }
+            </td>
+          `;
+        })
+        .join("");
+
+      const adminFooterSpacer = state.isAdmin
+        ? `<td class="border-l border-slate-200 bg-slate-50"></td>`
+        : "";
+
+      els.scheduleTableFoot.innerHTML = `
+        <tr>
+          <td class="sticky left-0 z-10 bg-slate-50 px-4 py-3 text-left shadow-[4px_0_8px_-4px_rgba(15,23,42,0.08)]">
+            <div class="text-xs font-bold text-slate-900">Monthly Total</div>
+            <div class="text-[11px] font-medium text-slate-500 truncate max-w-[180px] sm:max-w-[260px]">
+              ${
+                state.selectedPerson === "All" && state.selectedPlatform === "All"
+                  ? "All Family &amp; Platforms"
+                  : escapeHtml(
+                      [
+                        state.selectedPerson !== "All" ? state.selectedPerson : null,
+                        state.selectedPlatform !== "All" ? state.selectedPlatform : null
+                      ]
+                        .filter(Boolean)
+                        .join(" • ")
+                    )
+              }
+            </div>
+          </td>
+          ${footerMonthCells}
+          ${adminFooterSpacer}
+        </tr>
+      `;
+    }
+
+    function renderAll() {
+      els.lastUpdatedText.textContent = formatTimestampDisplay(state.lastUpdated);
+      computeRollingMonths();
+      renderPlatformDropdown();
+      const filteredItems = getFilteredInstallments();
+      renderFilterPills();
+      renderSummaryCards(filteredItems);
+      renderScheduleTable(filteredItems);
+    }
+
+    // =========================================================================
+    // 13. GLOBAL EVENT LISTENERS & INITIALIZATION
+    // =========================================================================
+    els.platformFilterDropdown.addEventListener("change", (e) => {
+      state.selectedPlatform = e.target.value;
+      renderAll();
+    });
+
+    els.selectedMonthDropdown.addEventListener("change", (e) => {
+      state.selectedMonth = e.target.value;
+      renderAll();
+    });
+
+    // Copy shareable link with ?person= query parameter using document.execCommand('copy')
+    els.copyShareLinkBtn.addEventListener("click", () => {
+      const shareUrl = window.location.href;
+      const tempInput = document.createElement("input");
+      tempInput.value = shareUrl;
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      try {
+        document.execCommand("copy");
+        els.copyShareLinkText.textContent = "Copied!";
+        showToast(`Copied share link (${state.selectedPerson}) to clipboard!`, "success");
+        setTimeout(() => {
+          els.copyShareLinkText.textContent = "Copy Filter Link";
+        }, 2000);
+      } catch (err) {
+        showToast("Unable to copy link automatically.", "error");
+      } finally {
+        document.body.removeChild(tempInput);
+      }
+    });
+
+    // Close open modals on Escape key
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        if (!els.installmentModal.classList.contains("hidden")) closeInstallmentModal();
+        if (!els.confirmModal.classList.contains("hidden")) closeConfirmModal();
+      }
+    });
+
+    // Boot application
+    initPersonFilterFromUrl();
+    updateAuthUI();
+    initBackend();
+  </script>
+</body>
+</html>
