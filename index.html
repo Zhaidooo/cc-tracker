@@ -151,6 +151,19 @@
             <span>Add Installment</span>
           </button>
           <button
+            id="openFamilyModalBtn"
+            type="button"
+            class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 transition cursor-pointer"
+          >
+            <svg class="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+            <span>Family Members</span>
+          </button>
+          <button
             id="seedDataBtn"
             type="button"
             class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 transition cursor-pointer"
@@ -193,8 +206,51 @@
       <div class="text-xs sm:text-sm text-sky-950">
         <p class="font-semibold">Reminder: Set Your Admin Email in <code class="px-1.5 py-0.5 rounded bg-sky-200/60 font-mono text-xs">ADMIN_EMAILS</code></p>
         <p class="text-sky-800 mt-0.5">
-          <code class="px-1 py-0.5 rounded bg-sky-200/60 font-mono text-xs">ADMIN_EMAILS</code> still contains <code class="px-1 py-0.5 rounded bg-sky-200/60 font-mono text-xs">"your-email@gmail.com"</code>. Admin UI controls are unlocked for testing, while your Firestore Security Rules enforce write permissions on the server.
+          <code class="px-1 py-0.5 rounded bg-sky-200/60 font-mono text-xs">ADMIN_EMAILS</code> still contains <code class="px-1.5 py-0.5 rounded bg-sky-200/60 font-mono text-xs">"your-email@gmail.com"</code>. Admin UI controls are unlocked for testing, while your Firestore Security Rules enforce write permissions on the server.
         </p>
+      </div>
+    </div>
+
+    <!-- Unauthorized Domain Helper Banner (Shown if Firebase Auth blocks current domain) -->
+    <div id="unauthorizedDomainBanner" class="hidden rounded-2xl bg-rose-50 border border-rose-200 p-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+      <div class="flex items-start gap-3">
+        <div class="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0 mt-0.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+        </div>
+        <div class="text-xs sm:text-sm text-rose-950 space-y-1">
+          <p class="font-bold">Domain Not Whitelisted in Firebase Authentication (<code class="font-mono text-xs">auth/unauthorized-domain</code>)</p>
+          <p class="text-rose-800 leading-relaxed">
+            To enable live Google Sign-In on this URL, open <strong>Firebase Console &rarr; Security &rarr; Authentication &rarr; Settings &rarr; Authorized domains</strong> and add:
+            <code id="unauthorizedDomainValue" class="px-2 py-0.5 rounded bg-rose-200/70 font-mono text-xs font-bold text-rose-950 select-all"></code>
+          </p>
+        </div>
+      </div>
+      <div class="flex flex-wrap items-center gap-2 shrink-0">
+        <button
+          id="copyDomainBtn"
+          type="button"
+          class="px-3 py-2 rounded-xl text-xs font-semibold bg-white hover:bg-rose-100 text-rose-900 border border-rose-300 transition cursor-pointer"
+        >
+          Copy Domain
+        </button>
+        <button
+          id="enablePreviewAdminBtn"
+          type="button"
+          class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-xs transition cursor-pointer"
+        >
+          Test Admin UI Locally
+        </button>
+        <button
+          id="dismissDomainBannerBtn"
+          type="button"
+          class="px-2.5 py-2 rounded-xl text-xs font-medium text-rose-700 hover:text-rose-950 transition cursor-pointer"
+        >
+          Dismiss
+        </button>
       </div>
     </div>
 
@@ -481,24 +537,35 @@
         <!-- Row 1: Family Member + Card / Platform -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label for="inputPerson" class="block text-xs font-semibold text-slate-700 mb-1.5">
-              Family Member <span class="text-rose-500">*</span>
-            </label>
+            <div class="flex items-center justify-between gap-2 mb-1.5">
+              <label for="inputPerson" class="block text-xs font-semibold text-slate-700">
+                Family Member <span class="text-rose-500">*</span>
+              </label>
+              <button
+                id="toggleNewMemberBtn"
+                type="button"
+                class="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-lg transition cursor-pointer"
+              >
+                + New Member
+              </button>
+            </div>
             <select
               id="inputPerson"
-              required
               class="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500"
             >
-              <option value="Paul">Paul</option>
-              <option value="Anj">Anj</option>
-              <option value="Nanay">Nanay</option>
-              <option value="Mama">Mama</option>
+              <!-- Dynamically populated with default & custom family members -->
             </select>
+            <input
+              id="inputNewPersonName"
+              type="text"
+              placeholder="Enter new family member name (e.g. Tatay)"
+              class="hidden w-full rounded-xl border border-amber-300 bg-amber-50/30 px-3.5 py-2.5 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500"
+            />
           </div>
 
           <div>
             <label for="inputCardPreset" class="block text-xs font-semibold text-slate-700 mb-1.5">
-              Card / Platform <span class="text-rose-500">*</span>
+              Card / BNPL Platform <span class="text-rose-500">*</span>
             </label>
             <select
               id="inputCardPreset"
@@ -519,13 +586,13 @@
             <input
               id="inputCardCustom"
               type="text"
-              placeholder="Enter custom card or lender name"
+              placeholder="Enter custom card or platform name"
               class="hidden mt-2 w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500"
             />
           </div>
         </div>
 
-        <!-- Row 2: Item / Merchant Name + Start Month -->
+        <!-- Row 2: Item / Merchant Description + Start Month -->
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div class="sm:col-span-2">
             <label for="inputItemName" class="block text-xs font-semibold text-slate-700 mb-1.5">
@@ -535,7 +602,7 @@
               id="inputItemName"
               type="text"
               required
-              placeholder="e.g. POCO F6 Pro - Shopee Official Store"
+              placeholder="e.g. POCO F6 Pro 512GB - Shopee"
               class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500"
             />
           </div>
@@ -758,6 +825,81 @@
   </div>
 
   <!-- ===================================================================== -->
+  <!-- FAMILY MEMBERS MANAGEMENT MODAL (Admin Only)                          -->
+  <!-- ===================================================================== -->
+  <div
+    id="familyMembersModal"
+    class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="familyMembersModalTitle"
+  >
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-xl w-full max-w-md overflow-hidden my-auto">
+      <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
+        <div>
+          <h3 id="familyMembersModalTitle" class="text-base font-bold text-slate-900">
+            Manage Family Members
+          </h3>
+          <p class="text-[11px] text-slate-500 mt-0.5">
+            Add new family members or remove unused custom members.
+          </p>
+        </div>
+        <button
+          id="closeFamilyModalBtn"
+          type="button"
+          class="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 transition cursor-pointer"
+          aria-label="Close family members modal"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4">
+        <!-- Add New Member Form -->
+        <form id="addFamilyMemberForm" class="flex items-center gap-2">
+          <label for="newFamilyMemberInput" class="sr-only">New family member name</label>
+          <input
+            id="newFamilyMemberInput"
+            type="text"
+            maxlength="32"
+            required
+            placeholder="e.g. Tatay, Ate, Kuya..."
+            class="flex-1 rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500"
+          />
+          <button
+            type="submit"
+            class="px-4 py-2.5 rounded-xl text-xs font-semibold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-xs transition shrink-0 cursor-pointer"
+          >
+            + Add
+          </button>
+        </form>
+
+        <!-- Current Members List -->
+        <div class="space-y-2 max-h-64 overflow-y-auto pr-1" id="familyMembersList">
+          <!-- Dynamically populated -->
+        </div>
+
+        <p class="text-[11px] text-slate-500 leading-relaxed bg-slate-50 border border-slate-200/80 rounded-xl p-3">
+          Members with active installments cannot be removed until their installments are reassigned or deleted.
+        </p>
+
+        <div class="pt-1 flex justify-end">
+          <button
+            id="doneFamilyModalBtn"
+            type="button"
+            class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white transition cursor-pointer"
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
   <!-- CUSTOM CONFIRMATION MODAL (Replaces browser confirm())                -->
   <!-- ===================================================================== -->
   <div
@@ -838,6 +980,12 @@
      * access the Admin UI controls while Firestore Security Rules enforce writes.
      */
     const ADMIN_EMAILS = ["paulbelamide@gmail.com"];
+
+    /**
+     * DEFAULT FAMILY MEMBERS:
+     * Always available alongside any custom members saved in Firestore 'settings/familyMembers'.
+     */
+    const DEFAULT_FAMILY_MEMBERS = ["Nanay", "Mama", "Anj", "Paul"];
 
     const CARD_PLATFORM_PRESETS = [
       "UnionBank",
@@ -928,6 +1076,7 @@
       addDoc,
       updateDoc,
       deleteDoc,
+      setDoc,
       doc,
       writeBatch,
       serverTimestamp
@@ -936,17 +1085,41 @@
     // =========================================================================
     // 3. CONSTANTS, FORMATTERS & PURE MONTH UTILITIES
     // =========================================================================
-    const FAMILY_MEMBERS = ["All", "Nanay", "Mama", "Anj", "Paul"];
     const BASE_START_MONTH = "2026-11"; // Rolling columns begin November 2026
     const MIN_ROLLING_MONTHS = 12;
     const DEMO_STORAGE_KEY = "family_card_installments_demo_v2";
+    const DEMO_FAMILY_STORAGE_KEY = "family_card_members_demo_v1";
 
     const PERSON_BADGE_STYLES = {
-      Paul: "bg-sky-100 text-sky-800 border-sky-200",
-      Anj: "bg-violet-100 text-violet-800 border-violet-200",
-      Nanay: "bg-rose-100 text-rose-800 border-rose-200",
-      Mama: "bg-teal-100 text-teal-800 border-teal-200"
+      paul: "bg-sky-100 text-sky-800 border-sky-200",
+      anj: "bg-violet-100 text-violet-800 border-violet-200",
+      nanay: "bg-rose-100 text-rose-800 border-rose-200",
+      mama: "bg-teal-100 text-teal-800 border-teal-200"
     };
+
+    const EXTRA_PERSON_BADGE_PALETTE = [
+      "bg-emerald-100 text-emerald-800 border-emerald-200",
+      "bg-amber-100 text-amber-900 border-amber-200",
+      "bg-indigo-100 text-indigo-800 border-indigo-200",
+      "bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200",
+      "bg-cyan-100 text-cyan-800 border-cyan-200",
+      "bg-lime-100 text-lime-800 border-lime-200",
+      "bg-orange-100 text-orange-800 border-orange-200",
+      "bg-pink-100 text-pink-800 border-pink-200"
+    ];
+
+    function getPersonBadgeClass(person) {
+      const normalized = String(person || "").trim().toLowerCase();
+      if (!normalized) return "bg-slate-100 text-slate-800 border-slate-200";
+      if (PERSON_BADGE_STYLES[normalized]) {
+        return PERSON_BADGE_STYLES[normalized];
+      }
+      let hash = 0;
+      for (let i = 0; i < normalized.length; i++) {
+        hash = (hash * 31 + normalized.charCodeAt(i)) >>> 0;
+      }
+      return EXTRA_PERSON_BADGE_PALETTE[hash % EXTRA_PERSON_BADGE_PALETTE.length];
+    }
 
     const PLATFORM_BADGE_STYLES = {
       unionbank: "bg-orange-100 text-orange-800 border-orange-200",
@@ -1044,14 +1217,22 @@
 
     const state = {
       installments: [],
+      settingsFamilyMembers: [...DEFAULT_FAMILY_MEMBERS],
+      sessionExtraMembers: [],
       selectedPerson: "All",
+      pendingUrlPerson: null,
       selectedPlatform: "All",
       selectedMonth: BASE_START_MONTH,
       rollingMonths: [],
       isAdmin: false,
+      isLocalPreviewAdmin: false,
       currentUser: null,
       lastUpdated: new Date()
     };
+
+    function useLocalStorageFallback() {
+      return isDemoMode || state.isLocalPreviewAdmin;
+    }
 
     let firebaseApp = null;
     let auth = null;
@@ -1059,6 +1240,33 @@
     let confirmCallback = null;
     let lastAutoCalculatedMonthly = 0;
     let isMonthlyManuallyOverridden = false;
+    let isInlineNewMemberMode = false;
+
+    /**
+     * Merges DEFAULT_FAMILY_MEMBERS, Firestore 'settings/familyMembers',
+     * session fallback members, and any unique person names in 'installments'.
+     */
+    function getAllFamilyMembers() {
+      const seen = new Set();
+      const merged = [];
+
+      const addUnique = (name) => {
+        const clean = String(name || "").trim();
+        if (!clean || clean.toLowerCase() === "all") return;
+        const key = clean.toLowerCase();
+        if (!seen.has(key)) {
+          seen.add(key);
+          merged.push(clean);
+        }
+      };
+
+      DEFAULT_FAMILY_MEMBERS.forEach(addUnique);
+      state.settingsFamilyMembers.forEach(addUnique);
+      state.sessionExtraMembers.forEach(addUnique);
+      state.installments.forEach((item) => addUnique(item.person));
+
+      return merged;
+    }
 
     // =========================================================================
     // 5. DOM ELEMENT REFERENCES
@@ -1068,6 +1276,11 @@
       connectionModeText: document.getElementById("connectionModeText"),
       lastUpdatedText: document.getElementById("lastUpdatedText"),
       adminConfigReminderBanner: document.getElementById("adminConfigReminderBanner"),
+      unauthorizedDomainBanner: document.getElementById("unauthorizedDomainBanner"),
+      unauthorizedDomainValue: document.getElementById("unauthorizedDomainValue"),
+      copyDomainBtn: document.getElementById("copyDomainBtn"),
+      enablePreviewAdminBtn: document.getElementById("enablePreviewAdminBtn"),
+      dismissDomainBannerBtn: document.getElementById("dismissDomainBannerBtn"),
       demoBanner: document.getElementById("demoBanner"),
       adminLoginBtn: document.getElementById("adminLoginBtn"),
       adminUserContainer: document.getElementById("adminUserContainer"),
@@ -1077,6 +1290,7 @@
       adminLogoutBtn: document.getElementById("adminLogoutBtn"),
       adminToolbar: document.getElementById("adminToolbar"),
       openAddModalBtn: document.getElementById("openAddModalBtn"),
+      openFamilyModalBtn: document.getElementById("openFamilyModalBtn"),
       seedDataBtn: document.getElementById("seedDataBtn"),
       clearAllDataBtn: document.getElementById("clearAllDataBtn"),
       personFilterContainer: document.getElementById("personFilterContainer"),
@@ -1113,6 +1327,8 @@
       installmentForm: document.getElementById("installmentForm"),
       editItemId: document.getElementById("editItemId"),
       inputPerson: document.getElementById("inputPerson"),
+      toggleNewMemberBtn: document.getElementById("toggleNewMemberBtn"),
+      inputNewPersonName: document.getElementById("inputNewPersonName"),
       inputCardPreset: document.getElementById("inputCardPreset"),
       inputCardCustom: document.getElementById("inputCardCustom"),
       inputItemName: document.getElementById("inputItemName"),
@@ -1132,6 +1348,13 @@
       calcTotalPayable: document.getElementById("calcTotalPayable"),
       inputNotes: document.getElementById("inputNotes"),
       modalPreviewSpan: document.getElementById("modalPreviewSpan"),
+      // Family Members Modal
+      familyMembersModal: document.getElementById("familyMembersModal"),
+      closeFamilyModalBtn: document.getElementById("closeFamilyModalBtn"),
+      doneFamilyModalBtn: document.getElementById("doneFamilyModalBtn"),
+      addFamilyMemberForm: document.getElementById("addFamilyMemberForm"),
+      newFamilyMemberInput: document.getElementById("newFamilyMemberInput"),
+      familyMembersList: document.getElementById("familyMembersList"),
       // Confirmation Modal
       confirmModal: document.getElementById("confirmModal"),
       confirmModalTitle: document.getElementById("confirmModalTitle"),
@@ -1208,17 +1431,29 @@
     function initPersonFilterFromUrl() {
       const params = new URLSearchParams(window.location.search);
       const rawPerson = params.get("person");
-      if (!rawPerson) {
+      if (!rawPerson || !rawPerson.trim()) {
         state.selectedPerson = "All";
+        state.pendingUrlPerson = null;
         return;
       }
-      const matched = FAMILY_MEMBERS.find(
-        (member) => member.toLowerCase() === rawPerson.trim().toLowerCase()
+      state.pendingUrlPerson = rawPerson.trim();
+      resolvePendingUrlPerson();
+    }
+
+    function resolvePendingUrlPerson() {
+      if (!state.pendingUrlPerson) return;
+      const members = getAllFamilyMembers();
+      const matched = members.find(
+        (member) => member.toLowerCase() === state.pendingUrlPerson.toLowerCase()
       );
-      state.selectedPerson = matched || "All";
+      if (matched) {
+        state.selectedPerson = matched;
+        state.pendingUrlPerson = null;
+      }
     }
 
     function setPersonFilter(person) {
+      state.pendingUrlPerson = null;
       state.selectedPerson = person;
       const url = new URL(window.location.href);
       if (person === "All") {
@@ -1259,6 +1494,18 @@
 
     function loadDemoData() {
       try {
+        const rawMembers = localStorage.getItem(DEMO_FAMILY_STORAGE_KEY);
+        if (rawMembers) {
+          const parsedMembers = JSON.parse(rawMembers);
+          if (Array.isArray(parsedMembers)) {
+            state.settingsFamilyMembers = parsedMembers;
+          }
+        }
+      } catch (err) {
+        console.warn("Could not read demo family members from localStorage:", err);
+      }
+
+      try {
         const raw = localStorage.getItem(DEMO_STORAGE_KEY);
         if (raw) {
           const parsed = JSON.parse(raw);
@@ -1280,6 +1527,7 @@
       state.lastUpdated = new Date();
       try {
         localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(state.installments));
+        localStorage.setItem(DEMO_FAMILY_STORAGE_KEY, JSON.stringify(state.settingsFamilyMembers));
       } catch (err) {
         console.warn("Could not save demo data to localStorage:", err);
       }
@@ -1294,6 +1542,7 @@
         els.demoBanner.classList.remove("hidden");
 
         loadDemoData();
+        resolvePendingUrlPerson();
         els.tableLoadingState.classList.add("hidden");
         els.tableScrollWrapper.classList.remove("hidden");
         renderAll();
@@ -1339,6 +1588,24 @@
           renderAll();
         });
 
+        // Subscribe to real-time Firestore 'settings/familyMembers' document
+        const familySettingsRef = doc(db, "settings", "familyMembers");
+        onSnapshot(
+          familySettingsRef,
+          (docSnap) => {
+            if (docSnap.exists() && Array.isArray(docSnap.data().members)) {
+              state.settingsFamilyMembers = docSnap.data().members;
+            } else {
+              state.settingsFamilyMembers = [...DEFAULT_FAMILY_MEMBERS];
+            }
+            resolvePendingUrlPerson();
+            renderAll();
+          },
+          (error) => {
+            console.warn("Firestore settings/familyMembers listener notice:", error);
+          }
+        );
+
         // Subscribe to real-time Firestore collection
         const installmentsRef = collection(db, "installments");
         onSnapshot(
@@ -1374,6 +1641,7 @@
 
             state.installments = docs;
             state.lastUpdated = latestTime || new Date();
+            resolvePendingUrlPerson();
             els.tableLoadingState.classList.add("hidden");
             els.tableScrollWrapper.classList.remove("hidden");
             renderAll();
@@ -1394,6 +1662,27 @@
     // =========================================================================
     // 9. AUTHENTICATION HANDLERS (Google Popup or Demo Admin Toggle)
     // =========================================================================
+    function activateLocalPreviewAdmin(reasonMessage) {
+      state.isLocalPreviewAdmin = true;
+      state.currentUser = {
+        displayName: "Local Preview Admin",
+        email: "preview.admin@local",
+        photoURL: "https://placehold.co/32x32/f59e0b/ffffff?text=A"
+      };
+      state.isAdmin = true;
+      updateAuthUI();
+      renderAll();
+      if (reasonMessage) {
+        showToast(reasonMessage, "info");
+      }
+    }
+
+    function showUnauthorizedDomainHelper() {
+      const host = window.location.hostname || "sandboxed-preview (no domain)";
+      els.unauthorizedDomainValue.textContent = host;
+      els.unauthorizedDomainBanner.classList.remove("hidden");
+    }
+
     async function handleAdminLogin() {
       if (isDemoMode) {
         state.currentUser = {
@@ -1408,25 +1697,49 @@
         return;
       }
 
+      // Sandboxed iframes (e.g. about:srcdoc) have an empty hostname and cannot run Firebase OAuth popups
+      if (!window.location.hostname) {
+        showUnauthorizedDomainHelper();
+        activateLocalPreviewAdmin(
+          "Sandboxed preview detected. Unlocked Local Admin UI for testing (open your whitelisted Vercel URL for live Firestore sync)."
+        );
+        return;
+      }
+
       try {
         const provider = new GoogleAuthProvider();
         provider.setCustomParameters({ prompt: "select_account" });
         await signInWithPopup(auth, provider);
+        els.unauthorizedDomainBanner.classList.add("hidden");
       } catch (error) {
-        if (error.code !== "auth/popup-closed-by-user") {
-          console.error("Google Sign-In error:", error);
-          showToast(`Login failed: ${error.message}`, "error");
+        if (error.code === "auth/popup-closed-by-user") {
+          return;
         }
+        if (
+          error.code === "auth/unauthorized-domain" ||
+          error.code === "auth/operation-not-supported-in-this-environment"
+        ) {
+          console.warn("Firebase Auth domain notice:", error.code, window.location.hostname);
+          showUnauthorizedDomainHelper();
+          showToast(
+            `Domain "${window.location.hostname}" is not whitelisted in Firebase Auth yet. See the banner above.`,
+            "error"
+          );
+          return;
+        }
+        console.warn("Google Sign-In error:", error);
+        showToast(`Login failed: ${error.message}`, "error");
       }
     }
 
     async function handleAdminLogout() {
-      if (isDemoMode) {
+      if (isDemoMode || state.isLocalPreviewAdmin) {
+        state.isLocalPreviewAdmin = false;
         state.currentUser = null;
         state.isAdmin = false;
         updateAuthUI();
         renderAll();
-        showToast("Signed out of Demo Admin Mode.", "info");
+        showToast("Signed out of Local Admin Mode.", "info");
         return;
       }
 
@@ -1434,10 +1747,40 @@
         await signOut(auth);
         showToast("Signed out successfully.", "info");
       } catch (error) {
-        console.error("Sign-out error:", error);
+        console.warn("Sign-out error:", error);
         showToast(`Sign-out failed: ${error.message}`, "error");
       }
     }
+
+    els.copyDomainBtn.addEventListener("click", () => {
+      const host = window.location.hostname;
+      if (!host) {
+        showToast("This preview iframe has no hostname. Deploy to Vercel to get a domain.", "info");
+        return;
+      }
+      const tempInput = document.createElement("input");
+      tempInput.value = host;
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      try {
+        document.execCommand("copy");
+        showToast(`Copied "${host}" to clipboard!`, "success");
+      } catch (err) {
+        showToast("Unable to copy domain automatically.", "error");
+      } finally {
+        document.body.removeChild(tempInput);
+      }
+    });
+
+    els.enablePreviewAdminBtn.addEventListener("click", () => {
+      activateLocalPreviewAdmin(
+        "Local Admin Preview unlocked. Changes stay in this browser until you sign in on a whitelisted domain."
+      );
+    });
+
+    els.dismissDomainBannerBtn.addEventListener("click", () => {
+      els.unauthorizedDomainBanner.classList.add("hidden");
+    });
 
     function updateAuthUI() {
       const hasPlaceholderAdminEmail = ADMIN_EMAILS.some(
@@ -1454,11 +1797,15 @@
           state.currentUser.photoURL || "https://placehold.co/32x32/f59e0b/ffffff?text=A";
 
         if (state.isAdmin) {
-          els.adminRoleLabel.textContent = "Admin Mode Active";
-          els.adminRoleLabel.className = "text-[10px] font-semibold text-emerald-700";
+          els.adminRoleLabel.textContent = state.isLocalPreviewAdmin
+            ? "Local Preview Admin"
+            : "Admin Mode Active";
+          els.adminRoleLabel.className = state.isLocalPreviewAdmin
+            ? "text-[10px] font-semibold text-amber-700"
+            : "text-[10px] font-semibold text-emerald-700";
           els.adminToolbar.classList.remove("hidden");
           els.footerStatusNote.textContent = "Admin Mode Active • Click monthly cells to toggle status";
-          if (!isDemoMode && hasPlaceholderAdminEmail) {
+          if (!isDemoMode && !state.isLocalPreviewAdmin && hasPlaceholderAdminEmail) {
             els.adminConfigReminderBanner.classList.remove("hidden");
           } else {
             els.adminConfigReminderBanner.classList.add("hidden");
@@ -1492,7 +1839,7 @@
         return;
       }
 
-      if (isDemoMode) {
+      if (useLocalStorageFallback()) {
         if (editId) {
           const idx = state.installments.findIndex((i) => i.id === editId);
           if (idx !== -1) {
@@ -1546,7 +1893,7 @@
       const currentStatus = item.schedule[monthKey];
       const nextStatus = currentStatus === "paid" ? "pending" : "paid";
 
-      if (isDemoMode) {
+      if (useLocalStorageFallback()) {
         item.schedule[monthKey] = nextStatus;
         item.updatedAt = new Date().toISOString();
         saveDemoData();
@@ -1584,10 +1931,10 @@
         confirmText: "Delete Installment",
         isDanger: true,
         onConfirm: async () => {
-          if (isDemoMode) {
+          if (useLocalStorageFallback()) {
             state.installments = state.installments.filter((i) => i.id !== itemId);
             saveDemoData();
-            showToast("Installment deleted (Demo Mode).", "info");
+            showToast("Installment deleted locally.", "info");
             return;
           }
 
@@ -1613,10 +1960,10 @@
         onConfirm: async () => {
           const records = buildSeedRecords();
 
-          if (isDemoMode) {
+          if (useLocalStorageFallback()) {
             state.installments = [...state.installments, ...records];
             saveDemoData();
-            showToast(`Loaded ${records.length} sample items into Demo schedule.`, "success");
+            showToast(`Loaded ${records.length} sample items into local schedule.`, "success");
             return;
           }
 
@@ -1656,7 +2003,7 @@
         confirmText: "Yes, Clear All Data",
         isDanger: true,
         onConfirm: async () => {
-          if (isDemoMode) {
+          if (useLocalStorageFallback()) {
             state.installments = [];
             saveDemoData();
             showToast("All installment records cleared.", "info");
@@ -1687,8 +2034,252 @@
     els.clearAllDataBtn.addEventListener("click", requestClearAllData);
 
     // =========================================================================
+    // 10B. FAMILY MEMBER MANAGEMENT (Firestore 'settings/familyMembers')
+    // =========================================================================
+    async function addFamilyMemberRecord(rawName, { silentIfExists = false } = {}) {
+      if (!state.isAdmin) {
+        showToast("Admin authentication required.", "error");
+        return null;
+      }
+
+      const cleanName = String(rawName || "").trim().replace(/\s+/g, " ");
+      if (!cleanName) {
+        showToast("Please enter a valid family member name.", "error");
+        return null;
+      }
+
+      if (cleanName.toLowerCase() === "all") {
+        showToast('"All" is reserved for the filter bar.', "error");
+        return null;
+      }
+
+      const existingMembers = getAllFamilyMembers();
+      const duplicate = existingMembers.find(
+        (m) => m.toLowerCase() === cleanName.toLowerCase()
+      );
+      if (duplicate) {
+        if (!silentIfExists) {
+          showToast(`"${duplicate}" is already in the family members list.`, "info");
+        }
+        return duplicate;
+      }
+
+      const updatedMembers = Array.from(
+        new Set([...DEFAULT_FAMILY_MEMBERS, ...state.settingsFamilyMembers, cleanName])
+      );
+
+      if (useLocalStorageFallback()) {
+        state.settingsFamilyMembers = updatedMembers;
+        saveDemoData();
+        showToast(`Added "${cleanName}" to family members.`, "success");
+        return cleanName;
+      }
+
+      try {
+        await setDoc(
+          doc(db, "settings", "familyMembers"),
+          {
+            members: updatedMembers,
+            updatedAt: serverTimestamp()
+          },
+          { merge: true }
+        );
+        showToast(`Added "${cleanName}" to family members.`, "success");
+        return cleanName;
+      } catch (error) {
+        console.error("Error saving family member to settings/familyMembers:", error);
+        // Keep member available in current session so installment save can still proceed
+        if (!state.sessionExtraMembers.some((m) => m.toLowerCase() === cleanName.toLowerCase())) {
+          state.sessionExtraMembers.push(cleanName);
+        }
+        renderAll();
+        showToast(
+          `Saved "${cleanName}" locally for this session, but Firestore blocked writing to 'settings/familyMembers'. Update Firestore Rules to allow writes to 'settings/{docId}' for your admin email.`,
+          "error"
+        );
+        return cleanName;
+      }
+    }
+
+    async function removeFamilyMemberRecord(memberName) {
+      if (!state.isAdmin) return;
+
+      const assignedCount = state.installments.filter(
+        (i) => i.person.toLowerCase() === memberName.toLowerCase()
+      ).length;
+
+      if (assignedCount > 0) {
+        showToast(
+          `Cannot remove "${memberName}" while they still have ${assignedCount} active installment(s).`,
+          "error"
+        );
+        return;
+      }
+
+      if (DEFAULT_FAMILY_MEMBERS.some((d) => d.toLowerCase() === memberName.toLowerCase())) {
+        showToast(`"${memberName}" is a built-in default member.`, "info");
+        return;
+      }
+
+      const updatedMembers = state.settingsFamilyMembers.filter(
+        (m) => m.toLowerCase() !== memberName.toLowerCase()
+      );
+      state.sessionExtraMembers = state.sessionExtraMembers.filter(
+        (m) => m.toLowerCase() !== memberName.toLowerCase()
+      );
+
+      if (state.selectedPerson.toLowerCase() === memberName.toLowerCase()) {
+        setPersonFilter("All");
+      }
+
+      if (useLocalStorageFallback()) {
+        state.settingsFamilyMembers = updatedMembers;
+        saveDemoData();
+        showToast(`Removed "${memberName}" from family members.`, "info");
+        return;
+      }
+
+      try {
+        await setDoc(
+          doc(db, "settings", "familyMembers"),
+          {
+            members: updatedMembers,
+            updatedAt: serverTimestamp()
+          },
+          { merge: true }
+        );
+        showToast(`Removed "${memberName}" from family members.`, "info");
+      } catch (error) {
+        console.error("Error removing family member:", error);
+        showToast(
+          `Unable to update 'settings/familyMembers' in Firestore. Ensure Firestore Rules allow writes to 'settings/{docId}'.`,
+          "error"
+        );
+      }
+    }
+
+    function renderFamilyMembersModalList() {
+      if (!els.familyMembersList) return;
+      const members = getAllFamilyMembers();
+
+      els.familyMembersList.innerHTML = members
+        .map((member) => {
+          const count = state.installments.filter(
+            (i) => i.person.toLowerCase() === member.toLowerCase()
+          ).length;
+          const isDefault = DEFAULT_FAMILY_MEMBERS.some(
+            (d) => d.toLowerCase() === member.toLowerCase()
+          );
+          const badgeStyle = getPersonBadgeClass(member);
+
+          let actionHtml = "";
+          if (isDefault) {
+            actionHtml = `
+              <span class="text-[11px] font-medium text-slate-400 px-2 py-1 rounded-lg bg-slate-100">
+                Default
+              </span>
+            `;
+          } else if (count > 0) {
+            actionHtml = `
+              <button
+                type="button"
+                disabled
+                title="Cannot remove while ${count} installment(s) are assigned"
+                class="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-400 bg-slate-100 border border-slate-200 cursor-not-allowed"
+              >
+                In Use (${count})
+              </button>
+            `;
+          } else {
+            actionHtml = `
+              <button
+                type="button"
+                data-remove-member="${escapeHtml(member)}"
+                class="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-rose-700 hover:bg-rose-50 border border-rose-200 transition cursor-pointer"
+              >
+                Remove
+              </button>
+            `;
+          }
+
+          return `
+            <div class="flex items-center justify-between gap-2 p-2.5 rounded-xl border border-slate-200/80 bg-white">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-bold border ${badgeStyle}">
+                  ${escapeHtml(member)}
+                </span>
+                <span class="text-xs text-slate-500 tabular-nums">
+                  ${count === 1 ? "1 installment" : `${count} installments`}
+                </span>
+              </div>
+              ${actionHtml}
+            </div>
+          `;
+        })
+        .join("");
+
+      els.familyMembersList.querySelectorAll("[data-remove-member]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const memberName = btn.getAttribute("data-remove-member");
+          removeFamilyMemberRecord(memberName);
+        });
+      });
+    }
+
+    function openFamilyMembersModal() {
+      if (!state.isAdmin) return;
+      els.newFamilyMemberInput.value = "";
+      renderFamilyMembersModalList();
+      els.familyMembersModal.classList.remove("hidden");
+      setTimeout(() => els.newFamilyMemberInput.focus(), 50);
+    }
+
+    function closeFamilyMembersModal() {
+      els.familyMembersModal.classList.add("hidden");
+    }
+
+    els.openFamilyModalBtn.addEventListener("click", openFamilyMembersModal);
+    els.closeFamilyModalBtn.addEventListener("click", closeFamilyMembersModal);
+    els.doneFamilyModalBtn.addEventListener("click", closeFamilyMembersModal);
+
+    els.addFamilyMemberForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const rawName = els.newFamilyMemberInput.value;
+      const added = await addFamilyMemberRecord(rawName);
+      if (added) {
+        els.newFamilyMemberInput.value = "";
+        renderFamilyMembersModalList();
+      }
+    });
+
+    // =========================================================================
     // 11. ADD / EDIT INSTALLMENT MODAL & REAL-TIME INTEREST CALCULATOR
     // =========================================================================
+    function populatePersonDropdown(selectedValue = "Paul") {
+      const members = getAllFamilyMembers();
+      els.inputPerson.innerHTML = members
+        .map((member) => {
+          const isSelected = member.toLowerCase() === String(selectedValue || "").toLowerCase();
+          return `<option value="${escapeHtml(member)}" ${isSelected ? "selected" : ""}>${escapeHtml(member)}</option>`;
+        })
+        .join("");
+    }
+
+    function setInlineNewMemberMode(enabled) {
+      isInlineNewMemberMode = Boolean(enabled);
+      if (isInlineNewMemberMode) {
+        els.inputPerson.classList.add("hidden");
+        els.inputNewPersonName.classList.remove("hidden");
+        els.toggleNewMemberBtn.textContent = "Select Existing";
+        setTimeout(() => els.inputNewPersonName.focus(), 30);
+      } else {
+        els.inputNewPersonName.classList.add("hidden");
+        els.inputNewPersonName.value = "";
+        els.inputPerson.classList.remove("hidden");
+        els.toggleNewMemberBtn.textContent = "+ New Member";
+      }
+    }
+
     function getSelectedPlanMonths() {
       if (els.inputPlanSelect.value === "custom") {
         return Math.max(1, parseInt(els.inputCustomMonths.value, 10) || 1);
@@ -1783,6 +2374,8 @@
     function openInstallmentModal(itemToEdit = null) {
       if (!state.isAdmin) return;
 
+      setInlineNewMemberMode(false);
+
       if (itemToEdit) {
         const months = Number(itemToEdit.totalMonths || itemToEdit.terms) || 6;
         const monthlyAmt = Number(itemToEdit.monthlyAmount) || 0;
@@ -1790,7 +2383,7 @@
 
         els.installmentModalTitle.textContent = "Edit Installment";
         els.editItemId.value = itemToEdit.id;
-        els.inputPerson.value = itemToEdit.person;
+        populatePersonDropdown(itemToEdit.person);
         syncCardPlatformInputs(itemToEdit.cardPlatform || itemToEdit.cardTag || "UnionBank");
         els.inputItemName.value = itemToEdit.itemName;
         els.inputStartMonth.value = itemToEdit.startMonth || BASE_START_MONTH;
@@ -1811,8 +2404,9 @@
       } else {
         els.installmentModalTitle.textContent = "Add New Installment";
         els.editItemId.value = "";
-        els.inputPerson.value =
-          state.selectedPerson !== "All" ? state.selectedPerson : "Paul";
+        populatePersonDropdown(
+          state.selectedPerson !== "All" ? state.selectedPerson : "Paul"
+        );
         syncCardPlatformInputs(
           state.selectedPlatform !== "All" ? state.selectedPlatform : "UnionBank"
         );
@@ -1840,6 +2434,10 @@
     els.openAddModalBtn.addEventListener("click", () => openInstallmentModal(null));
     els.closeInstallmentModalBtn.addEventListener("click", closeInstallmentModal);
     els.cancelInstallmentModalBtn.addEventListener("click", closeInstallmentModal);
+
+    els.toggleNewMemberBtn.addEventListener("click", () => {
+      setInlineNewMemberMode(!isInlineNewMemberMode);
+    });
 
     els.inputCardPreset.addEventListener("change", () => {
       if (els.inputCardPreset.value === "Other / Custom") {
@@ -1889,7 +2487,20 @@
     els.installmentForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const editId = els.editItemId.value.trim();
-      const person = els.inputPerson.value;
+      let person = els.inputPerson.value;
+
+      if (isInlineNewMemberMode) {
+        const typedMember = els.inputNewPersonName.value.trim();
+        if (!typedMember) {
+          showToast("Please enter a name for the new family member.", "error");
+          els.inputNewPersonName.focus();
+          return;
+        }
+        const savedMemberName = await addFamilyMemberRecord(typedMember, { silentIfExists: true });
+        if (!savedMemberName) return;
+        person = savedMemberName;
+      }
+
       const cardPlatform = getSelectedCardPlatform();
       const itemName = els.inputItemName.value.trim();
       const principal = Math.max(0, parseFloat(els.inputPrincipal.value) || 0);
@@ -1900,8 +2511,8 @@
       const startMonth = els.inputStartMonth.value || BASE_START_MONTH;
       const notes = els.inputNotes.value.trim();
 
-      if (!itemName || isNaN(monthlyAmount) || monthlyAmount <= 0) {
-        showToast("Please enter a valid item description, principal, and monthly amount.", "error");
+      if (!person || !itemName || isNaN(monthlyAmount) || monthlyAmount <= 0) {
+        showToast("Please enter a valid family member, item description, principal, and monthly amount.", "error");
         return;
       }
 
@@ -2012,8 +2623,9 @@
 
     function renderFilterPills() {
       els.personFilterContainer.innerHTML = "";
+      const filterMembers = ["All", ...getAllFamilyMembers()];
 
-      FAMILY_MEMBERS.forEach((member) => {
+      filterMembers.forEach((member) => {
         const count =
           member === "All"
             ? state.installments.length
@@ -2253,9 +2865,7 @@
             const schedule = item.schedule || {};
             const totalTerms = Object.keys(schedule).length || item.totalMonths || item.terms || 1;
             const paidCount = Object.values(schedule).filter((s) => s === "paid").length;
-            const badgeStyle =
-              PERSON_BADGE_STYLES[item.person] ||
-              "bg-slate-100 text-slate-800 border-slate-200";
+            const badgeStyle = getPersonBadgeClass(item.person);
             const platformLabel = item.cardPlatform || item.cardTag || "UnionBank";
             const platformBadgeStyle = getPlatformBadgeClass(platformLabel);
             const rateTag =
@@ -2483,6 +3093,9 @@
       renderFilterPills();
       renderSummaryCards(filteredItems);
       renderScheduleTable(filteredItems);
+      if (!els.familyMembersModal.classList.contains("hidden")) {
+        renderFamilyMembersModalList();
+      }
     }
 
     // =========================================================================
@@ -2523,6 +3136,7 @@
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
         if (!els.installmentModal.classList.contains("hidden")) closeInstallmentModal();
+        if (!els.familyMembersModal.classList.contains("hidden")) closeFamilyMembersModal();
         if (!els.confirmModal.classList.contains("hidden")) closeConfirmModal();
       }
     });
